@@ -1,0 +1,22 @@
+{
+  "updatedAt": "2026-10-11",
+  "installment": {
+    "plannedMonthlyRub": 3000,
+    "from": "2026-11",
+    "note": "Replace previous plan of 2500; do not record payment before bank transaction"
+  },
+  "pension": {
+    "targetRub": 36000,
+    "monthlyTransferRub": 4000,
+    "start": "2027-01",
+    "targetMonth": "2027-09",
+    "monthsRequired": 9,
+    "contributionsConfirmedRub": 0,
+    "account": "Pension savings: account to confirm",
+    "treatment": "Own-account transfer to restricted retirement savings, not ordinary expense"
+  },
+  "incomeRub": 57882,
+  "plannedOtherLoansRub": 30000,
+  "subscriptionsAndPhoneRub": 6353,
+  "janCashflowNote": "January benefit may arrive late December and be reserved on deposit; count once, no second January income."
+}
