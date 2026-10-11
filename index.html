@@ -520,18 +520,24 @@ function renderSpendingDonut(){
  for(const refund of linkedRefundsForPeriod()){
   const original=state.ops.find(p=>p.id===refund.refundOf);
   if(!original)continue;
-  insert(original.category,original.subcategory,original.itemName||original.description,-refund.amount);
+  if(Array.isArray(original.items)&&original.items.length){
+   const portions=original.items.map(x=>cents(x.price||x.amount)),sum=portions.reduce((a,b)=>a+b,0);
+   let left=cents(refund.amount);
+   original.items.forEach((item,i)=>{const part=i===original.items.length-1?left:Math.round(cents(refund.amount)*(sum?portions[i]/sum:0));left-=part;insert(item.category||original.category,item.subcategory||original.subcategory,item.name||item.description||original.description,-part/100)});
+  }else insert(original.category,original.subcategory,original.itemName||original.description,-refund.amount);
  }
  let level=expenseDrill.length,entries=[];
  if(level===0){entries=Object.entries(tree).map(([n,subs])=>[n,Object.values(subs).reduce((a,items)=>a+Object.values(items).reduce((x,y)=>x+y,0),0)]);}
  if(level===1){const subs=tree[expenseDrill[0]]||{};entries=Object.entries(subs).map(([n,items])=>[n,Object.values(items).reduce((a,b)=>a+b,0)]);}
  if(level===2){entries=Object.entries(tree[expenseDrill[0]]?.[expenseDrill[1]]||{});}
  entries.sort((a,b)=>b[1]-a[1]);
- const total=entries.reduce((a,b)=>a+b[1],0),colors=['#a75b3d','#647349','#d6a66d','#8c7855','#bc9276','#7d9a78','#d9cdb6','#adc2a4'];
+ const netTotal=entries.reduce((a,b)=>a+b[1],0);
+ const chartEntries=entries.filter(([n,v])=>v>0);
+ const total=chartEntries.reduce((a,b)=>a+b[1],0),colors=['#a75b3d','#647349','#d6a66d','#8c7855','#bc9276','#7d9a78','#d9cdb6','#adc2a4'];
  let offset=0,sections=[];
- for(let i=0;i<entries.length;i++){const pct=total?100*entries[i][1]/total:0;sections.push(colors[i%colors.length]+' '+offset.toFixed(3)+'% '+(offset+pct).toFixed(3)+'%');offset+=pct}
+ for(let i=0;i<chartEntries.length;i++){const pct=total?100*chartEntries[i][1]/total:0;sections.push(colors[i%colors.length]+' '+offset.toFixed(3)+'% '+(offset+pct).toFixed(3)+'%');offset+=pct}
  $('expenseDonut').style.background=total?'conic-gradient('+sections.join(',')+')':'#e8decc';
- $('donutText').textContent=fmt(total/100);
+ $('donutText').textContent=fmt(netTotal/100);
  const crumb='<div class="drill-path"><button class="secondary" onclick="setExpenseDrill(0)">Все расходы</button>'+expenseDrill.map((n,i)=>'<span>›</span><button class="secondary" onclick="setExpenseDrill('+(i+1)+', '+JSON.stringify(n).replace(/"/g,'&quot;')+')">'+esc(n)+'</button>').join('')+'</div>';
  let html=crumb+(!entries.length?'<p class="muted">Нет расходов на этом уровне за выбранный месяц.</p>':'');
  html+=entries.map(([n,v],i)=>'<button type="button" class="drill-row" '+(level<2?'onclick="setExpenseDrill('+(level+1)+',this.dataset.name)" data-name="'+esc(n)+'"':'disabled')+'><span class="drill-dot" style="background:'+colors[i%colors.length]+'"></span><span class="drill-label">'+esc(n)+'</span><b>'+fmt(v/100)+'</b>'+(level<2?'<span class="drill-arrow">›</span>':'')+'</button>').join('');
