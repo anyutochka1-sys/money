@@ -99,7 +99,25 @@ main{width:100%;padding:16px 12px 56px}
 .data-table{display:block;max-width:100%;overflow-x:auto}
 }
 </style>
-</head>
+<style id="finance-row-mobile-fix">
+.finance-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:10px;width:100%;min-width:0}
+.finance-row>span{min-width:0;overflow-wrap:anywhere;word-break:normal;line-height:1.45}
+.finance-row>b{min-width:0;max-width:100%;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+#overview #latest{min-width:0;max-width:100%;width:100%;overflow:hidden}
+#overview #latest .finance-row{font-size:clamp(12px,3.45vw,15px)}
+#overview #latest .finance-row>b{font-size:clamp(12px,3.4vw,15px)}
+#overview .card,#overview .note{overflow-wrap:anywhere}
+@media(max-width:620px){
+#overview #latest .finance-row{grid-template-columns:minmax(0,1fr) minmax(77px,auto);column-gap:8px}
+#overview #latest .finance-row>b{align-self:start}
+#overview .quick-bank-grid{min-width:0}
+#overview .quick-bank{min-width:0;max-width:100%}
+}
+@media(max-width:350px){
+#overview #latest .finance-row{grid-template-columns:minmax(0,1fr)}
+#overview #latest .finance-row>b{text-align:left}
+}
+</style></head>
 <body><header><div class="inner"><div class="logo">✳ Мои финансы <small style="font-size:12px;font-weight:400">личный бюджет</small></div><div class="btns"><button class="secondary" onclick="downloadData()">Экспорт данных</button><button onclick="goto('add')">+ Операция</button></div></div><nav id="tabs"><button data-tab="overview" class="active">Обзор</button><button data-tab="month">Бюджет · план/факт</button><button data-tab="planned">Планируемые траты</button><button data-tab="accounts">Банки</button><button data-tab="investments">Инвестиции</button><button data-tab="debts">Кредиты</button><button data-tab="history">История</button><button data-tab="add">Добавить</button><button data-tab="receipt">📷 Чек</button><button data-tab="analytics">Анализ продуктов</button><button data-tab="creditcheck">Новый кредит?</button><button data-tab="incomeplan">Календарь доходов</button><button data-tab="settings">Настройки</button></nav></header>
 <main><section class="panel active" id="overview"><div class="quick-entry card"><div class="kicker">Быстрая запись</div><h1>Что записываем?</h1><div class="quick-actions"><button type="button" id="quickExpense" class="quick-active" onclick="quickMode('expense')">− Расход</button><button type="button" id="quickIncome" onclick="quickMode('income')">+ Доход</button><button type="button" id="quickTransfer" onclick="quickMode('transfer')">⇄ Перевод себе</button></div><form id="quickForm" onsubmit="saveQuick(event)"><label>Сумма, ₽<input type="number" name="amount" inputmode="decimal" min=".01" step=".01" placeholder="0" required></label><label>Банк или счёт<select name="account" id="quickAccount" required></select></label><label id="quickDestinationLabel" class="hidden">На какой счёт<select name="destination" id="quickDestination"></select></label><label>На что / откуда<input name="description" placeholder="Например, продукты или пособие"></label><label>Дата<input name="date" type="date" required></label><div id="quickCategoryBlock" class="full-row category-steps"><label>Большая группа<select name="category" id="quickCategory" onchange="updateQuickCategories()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(1)">+ Добавить группу</button></label><label>Подгруппа<select name="subcategory" id="quickSubcategory" onchange="updateQuickItems()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(2)">+ Добавить подгруппу</button></label><label>Конкретная покупка / третья группа<input name="itemName" id="quickItemName" list="quickItemSuggestions" placeholder="Например, батончик Milky Way или шапка Мире"><datalist id="quickItemSuggestions"></datalist><button type="button" class="secondary cat-add" onclick="addQuickCategory(3)">+ Добавить товар</button></label></div><label id="quickAttachmentLabel" class="full-row quick-attach">📎 Прикрепить чек или документ<input id="quickAttachment" type="file" accept="image/*,application/pdf" onchange="quickAttachmentSelected(this)"><small id="quickAttachmentStatus">Необязательно</small></label><button class="full-row">Сохранить операцию</button></form><small>Для платежа по кредиту откройте <a href="#" onclick="event.preventDefault();goto('add')">расширенную форму</a>.</small></div><div class="period-panel"><h1>Общая картина</h1><div class="period-controls"><button onclick="choosePeriod('day')">День</button><button onclick="choosePeriod('week')">Неделя</button><button onclick="choosePeriod('month')">Месяц</button><button onclick="choosePeriod('quarter')">Квартал</button><button onclick="choosePeriod('half')">Полгода</button><button onclick="choosePeriod('year')">Год</button></div><label>Дата отчёта<input type="date" id="periodDate" onchange="choosePeriod()"></label><small id="periodText"></small></div><p class="muted">Ваши данные хранятся только в этом браузере. Для сохранности используйте экспорт.</p><div class="grid">
 <div class="card hero-balance"><div class="kicker">Доступные деньги</div><div class="big" id="assetTotal">0 ₽</div><small>По добавленным счетам · без инвестиций</small><small id="balanceFreshness"></small></div>
@@ -182,7 +200,7 @@ function saveInvestments(){const n=Number($('investmentInput').value);if(!Number
 function goto(tab){document.querySelectorAll('section.panel').forEach(s=>s.classList.toggle('active',s.id===tab));document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='add'){$('opForm').elements.date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>goto(b.dataset.tab));
 function debtBalance(d){let p=cents(d.principal),i=cents(d.interest);for(const o of state.ops){if(o.type==='debt'&&o.loan===d.name){p-=cents(o.principalPaid);i-=cents(o.interestPaid)}}return {principal:Math.max(0,p)/100,interest:Math.max(0,i)/100}}function balance(a){let base=cents(a.balance);for(const o of state.ops){if(o.imported||a.balanceDate&&o.date<=a.balanceDate)continue;let v=cents(o.amount);if(o.type==='transfer'){if(o.account===a.id)base-=v;if(o.destination===a.id)base+=v}else if(o.account===a.id){base+=(o.type==='income'||o.type==='family')?v:-v}}return base/100}
-const row=(left,right)=>'<div class="split" style="padding:11px 0;border-bottom:1px solid #edf1f2"><span>'+left+'</span><b>'+right+'</b></div>';
+const row=(left,right)=>'<div class="split finance-row" style="padding:11px 0;border-bottom:1px solid #edf1f2"><span>'+left+'</span><b>'+right+'</b></div>';
 function render(){
 let now=$('monthPicker').value||new Date().toISOString().slice(0,7);$('monthPicker').value=now;
 let ops=state.ops.filter(o=>o.date.startsWith(now)),expenses=ops.filter(o=>o.type==='expense'),incomes=ops.filter(o=>o.type==='income'),family=ops.filter(o=>o.type==='family'),payments=ops.filter(o=>o.type==='debt');
