@@ -512,7 +512,7 @@ function renderDebtPaymentComparison(){
  const rows=state.debts.map(d=>{
   const name=d.name;
   const isMortgage=/ипотек/i.test(name),isConsumer=/потребительск/i.test(name),isInstallment=/рассрочк/i.test(name),isCard=/сберкарт/i.test(name);
-  const target=isConsumer&&month==='2026-10'?10000:isInstallment&&month==='2026-10'?2500:Number(d.planned)||0;
+  const target=isConsumer&&month==='2026-10'?10000:isInstallment&&month==='2026-10'?3000:Number(d.planned)||0;
   const all=state.ops.filter(o=>o.date?.startsWith(month)&&o.type==='debt'&&o.loan===name&&!o.imported);
   let confirmed=all.reduce((n,o)=>n+cents(o.amount),0)/100;
   let source=all.length?'Подтверждено внесёнными операциями':'Не сверено с конкретным кредитом';
