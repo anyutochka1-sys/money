@@ -565,25 +565,36 @@ async function loadOzonDetails(){
   applyOzonDetails();
  }catch(e){$('ozonItemStatus').textContent='Не удалось открыть список покупок Ozon: '+e.message}
 }
-function applyOzonDetails(){
- let matched=0,unmatched=0;
- const used=new Set(),matches=[];
- for(const item of ozonDetails){
-  const end=new Date(item.received+'T12:00:00'),start=new Date(end);start.setDate(start.getDate()-32);
-  const lower=start.toLocaleDateString('sv-SE');
-  const candidates=state.ops.filter(o=>o.type==='expense'&&o.account==='seed-ozon'&&Math.abs(o.amount-item.amount)<0.005&&o.date>=lower&&o.date<=item.received&&!used.has(o.id));
-  if(candidates.length===1){
-   const op=candidates[0];used.add(op.id);
-   matches.push({item,op});matched++;
-  }else unmatched++;
+function classifyMarketplace(items,bank){
+ const used=new Set(),linked=[];
+ const eligible=items.filter(x=>x.status!=='in_transit_unpaid');
+ const candidatesFor=item=>{
+  let delivery=item.received||item.date;
+  let end=new Date(delivery+'T12:00:00'),start=new Date(end);
+  start.setDate(start.getDate()-32);
+  let lower=start.toLocaleDateString('sv-SE');
+  return state.ops.filter(o=>o.type==='expense'&&
+   (o.account===(bank==='ozon'?'seed-ozon':'seed-wb')||
+    new RegExp(bank==='ozon'?'ozon|озон':'wildberries|wb|вб','i').test(o.description||''))&&
+   Math.abs(o.amount-item.amount)<0.005&&o.date>=lower&&o.date<=delivery);
+ };
+ const matches=eligible.map(item=>({item,ops:candidatesFor(item)}));
+ for(const m of matches){
+  if(m.ops.length!==1)continue;
+  const op=m.ops[0];
+  if(matches.filter(x=>x.ops.some(o=>o.id===op.id)).length!==1||used.has(op.id))continue;
+  used.add(op.id);linked.push({item:m.item,op});
  }
- for(const {item,op} of matches){
+ for(const {item,op} of linked){
   op.category=item.group;op.subcategory=item.subgroup;op.itemName=item.item;
-  op.ozonClassified=true;
+  op.marketplaceClassified=bank;
  }
- if(matched)localStorage.setItem(KEY,JSON.stringify(state));
- const summary=$('ozonItemStatus');
- summary.textContent='На скриншотах '+ozonDetails.length+' позиций. По сумме и диапазону дат найдено '+matched+' однозначных совпадений. На дополнительную сверку: '+unmatched+'. Повторных расходов не создаём.';
+ if(linked.length){localStorage.setItem(KEY,JSON.stringify(state));render();}
+ return {linked:linked.length,review:eligible.length-linked.length,excluded:items.length-eligible.length};
+}
+function applyOzonDetails(){
+ const tally=classifyMarketplace(ozonDetails,'ozon');
+ $('ozonItemStatus').textContent='По скриншотам '+ozonDetails.length+' товаров. Привязано к банковским расходам: '+tally.linked+'. Остальные '+tally.review+' требуют сверки по дате оплаты и сумме. Новые списания не создаются.';
  $('ozonItemList').innerHTML='<div class="ozon-catalog">'+ozonDetails.map(item=>'<div class="ozon-line"><div><b>'+esc(item.item)+'</b><small>'+esc(item.group)+' → '+esc(item.subgroup)+' · получено '+esc(item.received)+'</small></div><strong>'+fmt(item.amount)+'</strong></div>').join('')+'</div>';
  renderSpendingDonut();
 }
@@ -596,6 +607,7 @@ async function loadWbDetails(){
  const paid=items.filter(x=>x.status!=='in_transit_unpaid');
  $('wbItemStatus').textContent=items.length+' товаров распознано по скриншотам. '+paid.length+' оплаченных или полученных, '+(items.length-paid.length)+' неоплаченных. Суммы здесь справочные и не прибавляются к банковским расходам.';
  $('wbItemList').innerHTML='<div class="ozon-catalog">'+items.map(x=>'<div class="ozon-line"><div><b>'+esc(x.item)+'</b><small>'+esc(x.group)+' → '+esc(x.subgroup)+' · '+(x.status==='in_transit_unpaid'?'В пути, не оплачен':x.status==='in_transit_paid'?'Оплачен, в пути':'Получен')+'</small></div><strong>'+fmt(x.amount)+'</strong></div>').join('')+'</div>';
+ const tally=classifyMarketplace(items,'wb');$('wbItemStatus').textContent=items.length+' товаров: '+tally.linked+' привязано к расходам, '+tally.review+' ждут сверки, '+tally.excluded+' неоплаченных. Повторные списания не создаются.';
  const belt=state.ops.find(o=>o.id==='seed-wb-belt-1011');if(belt&&belt.type==='expense'){belt.category='Одежда';belt.subcategory='Аксессуары';belt.itemName='Широкий пояс-ремень';localStorage.setItem(KEY,JSON.stringify(state));render();}
  }catch(e){$('wbItemStatus').textContent='Не удалось загрузить покупки WB: '+e.message}
 }
