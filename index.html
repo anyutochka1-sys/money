@@ -507,10 +507,24 @@ initQuickCategories();
 function choosePeriod(p){if(p)reportPeriod=p;render()}
 function reviewOperation(id,kind){
  const op=state.ops.find(o=>o.id===id);if(!op)return;
- if(kind==='verify'){if(op.type==='unverified')op.type='expense';op.needsReview=false;op.confirmedByUser=true;}
- if(kind==='income'){op.type='income';op.needsReview=false;op.confirmedByUser=true;}
- if(kind==='transfer'){op.type='transfer';op.needsReview=false;op.confirmedByUser=true;op.destination=op.destination||'';}
- if(kind==='unverified'){op.type='unverified';op.needsReview=true;op.confirmedByUser=false;}
+ if(kind==='verify'){
+  const group=prompt('Большая категория расхода',op.category==='Требует проверки'?'Другое':op.category||'Другое');if(group===null)return;
+  const sub=prompt('Подкатегория (необязательно)',op.subcategory||'');if(sub===null)return;
+  const item=prompt('Что куплено (необязательно)',op.itemName||op.description||'');if(item===null)return;
+  op.type='expense';op.category=group.trim()||'Другое';op.subcategory=sub.trim();op.itemName=item.trim();op.needsReview=false;op.confirmedByUser=true;
+ }else if(kind==='income'){
+  if(!confirm('Подтвердить как доход?'))return;
+  op.type='income';op.category='Поступления';op.needsReview=false;op.confirmedByUser=true;
+ }else if(kind==='transfer'){
+  const options=state.accounts.filter(a=>a.id!==op.account);
+  const reply=prompt('Перевод между своими счетами. Укажите номер счёта-получателя из списка:\n'+options.map((a,i)=>(i+1)+'. '+a.name).join('\n'),'');
+  if(reply===null)return;
+  const to=options[Number(reply)-1];
+  if(!to){alert('Нужно выбрать конкретный счёт-получатель. Перевод не изменён.');return}
+  op.type='transfer';op.destination=to.id;op.needsReview=false;op.confirmedByUser=true;op.category='Между своими счетами';
+ }else if(kind==='unverified'){
+  op.type='unverified';op.needsReview=true;op.confirmedByUser=false;
+ }
  localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
 }
 function reviewQueue(){
