@@ -36,18 +36,19 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
 (function initializeKnownData(){
  const accounts=[
  {id:'seed-sber-6993',name:'Сбер ••6993',balance:1129.34,balanceDate:'2026-10-11',kind:'Карта'},
- {id:'seed-sber-card2',name:'Сбер · карта 2 (уточнить)',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
- {id:'seed-sber-card3',name:'Сбер · карта 3 (уточнить)',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
+ {id:'seed-sber-1814',name:'Сбер ••1814',balance:0,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-sber-savings',name:'Сбер · накопительный',balance:12000,balanceDate:'2026-10-11',kind:'Накопительный счёт'},
  {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-ozon',name:'Ozon Банк',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
  {id:'seed-tbank',name:'Т-Банк',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true}
  ];
+ state.accounts=state.accounts.filter(a=>!['seed-sber-card2','seed-sber-card3'].includes(a.id));
  for(const a of accounts)if(!state.accounts.some(x=>x.id===a.id||x.name===a.name))state.accounts.push(a);
  const debts=[
  {name:'Ипотека Сбер',principal:493575.17,interest:1501.01,rate:18.5,required:8299.50,planned:15000,bankEndDate:'2040-05-03'},
  {name:'Потребительский кредит Сбер',principal:100591.89,interest:470.71,rate:24.4,required:3062.90,planned:15000,bankEndDate:'2031-04-26'},
- {name:'Рассрочка на обучение',principal:19902.32,interest:4.49,rate:8.24,required:1884.66,planned:3000,bankEndDate:'2027-09-10'}
+ {name:'Рассрочка на обучение',principal:19902.32,interest:4.49,rate:8.24,required:1884.66,planned:3000,bankEndDate:'2027-09-10'},
+ {name:'Кредитная СберКарта ••8611',principal:4998.70,interest:0,rate:38.8,required:0,planned:0,bankEndDate:''}
  ];
  for(const d of debts)if(!state.debts.some(x=>x.name===d.name))state.debts.push(d);
  const ops=[
