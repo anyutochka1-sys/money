@@ -106,15 +106,18 @@ function attachLentaReceipt(){
  {name:'Творог Савушкин Нежный обезжиренный 125 г, 10 шт.',price:318.92,category:'Продукты / готовка'},
  {name:'Лаваш Ярхлеб армянский 300 г, 1 шт.',price:60.24,category:'Продукты / готовка'}
  ];
- let matches=state.ops.filter(o=>o.type==='expense'&&o.date===date&&cents(o.amount)===cents(total));
+ const sber=state.accounts.find(a=>/сбер/i.test(a.name)&&/6993/.test(a.name));
+ let matches=state.ops.filter(o=>o.type==='expense'&&o.date===date&&cents(o.amount)===cents(total)&&(!o.account||o.account===sber?.id));
  if(matches.length===1){
   const found=matches[0];
+  if(!sber){alert('Покупка оплачена со Сбера ••6993, но счёт ещё не добавлен в сайт. Сначала добавьте карту с контрольным остатком, чтобы не испортить сверку.');return}
+  found.account=sber.id;
   if(Array.isArray(found.items)&&found.items.length&&!confirm('У этой покупки уже есть товары. Заменить расшифровку чеком Ленты?'))return;
   found.items=items;found.receiptId='lenta-2026-10-10-210';found.category='Продукты / готовка';
   if(!found.description)found.description='Лента · чек 210';
   save();alert('Готово: чек Ленты привязан к существующему расходу 498,95 ₽. Баланс банка не изменён.');goto('history');return;
  }
- receiptItems=items.map(x=>({...x}));$('receiptDate').value=date;$('receiptMerchant').value='Лента · чек 210';$('receiptTotal').value=total;
+ receiptItems=items.map(x=>({...x}));$('receiptDate').value=date;$('receiptMerchant').value='Лента · чек 210';$('receiptTotal').value=total;if(sber)$('receiptAccount').value=sber.id;
  receiptRender();
  $('receiptStatus').textContent=matches.length===0?'В локальной истории пока нет совпадающей операции от 10 октября на 498,95 ₽. Товары подготовлены; не сохраняйте повторный расход. Сначала импортируйте банковскую операцию.':'Есть несколько расходов с этой датой и суммой. Для безопасной привязки требуется уточнить банк.';
  alert(matches.length===0?'Расшифровка подготовлена, но банковская операция пока не найдена в локальном сайте. Дублировать расход не буду.':'Найдено несколько совпадений; автоматическая привязка приостановлена.');
