@@ -39,10 +39,14 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  {id:'seed-sber-1814',name:'Сбер ••1814',balance:0,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-sber-savings',name:'Сбер · накопительный',balance:12000,balanceDate:'2026-10-11',kind:'Накопительный счёт'},
  {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'},
- {id:'seed-ozon',name:'Ozon Банк',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
- {id:'seed-tbank',name:'Т-Банк',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true}
+ {id:'seed-ozon',name:'Ozon Банк · основной счёт',balance:987.01,balanceDate:'2026-10-10',kind:'Счёт'},
+ {id:'seed-ozon-savings',name:'Ozon Банк · накопительный',balance:1000,balanceDate:'2026-10-10',kind:'Накопительный счёт'},
+ {id:'seed-tbank',name:'Т-Банк ••5733',balance:0,balanceDate:'2026-10-11',kind:'Карта'}
  ];
  state.accounts=state.accounts.filter(a=>!['seed-sber-card2','seed-sber-card3'].includes(a.id));
+ const oldOzon=state.accounts.find(a=>a.id==='seed-ozon');if(oldOzon&&oldOzon.needsReconciliation&&!oldOzon.balanceDate){oldOzon.name='Ozon Банк · основной счёт';oldOzon.balance=987.01;oldOzon.balanceDate='2026-10-10';oldOzon.kind='Счёт';delete oldOzon.needsReconciliation}
+ const oldT=state.accounts.find(a=>a.id==='seed-tbank');if(oldT&&oldT.needsReconciliation&&!oldT.balanceDate){oldT.name='Т-Банк ••5733';oldT.balance=0;oldT.balanceDate='2026-10-11';delete oldT.needsReconciliation}
+
  for(const a of accounts)if(!state.accounts.some(x=>x.id===a.id||x.name===a.name))state.accounts.push(a);
  // Последняя сверка по снимку Сбер от 11.10.2026 после перевода 300 ₽.
  const sber6993=state.accounts.find(a=>a.id==='seed-sber-6993');if(sber6993&&(!sber6993.balanceDate||sber6993.balanceDate<='2026-10-11')&&sber6993.balance===1129.34){sber6993.balance=829.34;sber6993.balanceDate='2026-10-11'}
