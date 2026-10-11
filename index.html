@@ -430,23 +430,24 @@ async function loadArchivedOperations(){
 }
 loadArchivedOperations();
 
-async function importRecentArchive(){
+async function importRecentArchive(path='./data/statement-sep-oct-2026.gz.b64',prefix='archive-so-',statusId='recentArchiveStatus'){
  try{
- let f=await fetch('./data/statement-sep-oct-2026.gz.b64');
+ let f=await fetch(path);
  let b=Uint8Array.from(atob((await f.text()).trim()),c=>c.charCodeAt(0));
  let p=JSON.parse(await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
  let map={'Сбер 6993':'seed-sber-6993','Сбер 1814':'seed-sber-1814','Накопительный':'seed-sber-savings','Ozon основной':'seed-ozon','Ozon дополнительный':'seed-ozon-savings','Т-Банк 5733':'seed-tbank','ВБ Кошелёк / счёт':'seed-wb'};
  let types={e:'expense',i:'income',t:'transfer',u:'unverified',d:'archivedDebt',r:'refund'};
  let existing=new Set(state.ops.map(o=>o.id)),added=0;
- p.operations.forEach((x,i)=>{let id='archive-so-'+i;if(existing.has(id))return;
+ p.operations.forEach((x,i)=>{let id=prefix+i;if(existing.has(id))return;
  let date='2026-'+x[0].slice(0,2)+'-'+x[0].slice(2),type=types[x[3]],accountName=p.accounts[x[2]],account=map[accountName]||'',amount=x[1]/100;
  if(type==='expense'&&state.ops.some(o=>o.id?.startsWith('seed-')&&o.type==='expense'&&o.date===date&&o.account===account&&Math.abs(o.amount-amount)<.005))return;
  state.ops.push({id,date,type,account,accountName,amount,category:p.categories[x[4]],description:x[5],imported:true,needsReview:type==='unverified'||type==='transfer',sourceFile:'Сверка 2026'});added++});
  if(added){localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory()}
- $('recentArchiveStatus').textContent='Сентябрь и октябрь: '+p.operations.length+' строк архива, добавлено '+added+' операций. Переводы отделены от расходов.';
- }catch(e){$('recentArchiveStatus').textContent='Архив сентября–октября не загрузился: '+e.message}
+ $(statusId).textContent+=(prefix==='archive-so-'?' Сентябрь–октябрь: ':' Дополнительный архив: ')+p.operations.length+' строк, добавлено '+added+'; переводы отделены от расходов.';
+ }catch(e){$(statusId).textContent+=' Ошибка архива: '+e.message}
 }
 importRecentArchive();
+importRecentArchive('./data/statement-remaining-2026.gz.b64','archive-rest-');
 
 render();
 </script></body></html>
