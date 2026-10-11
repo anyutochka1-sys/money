@@ -594,8 +594,8 @@ function renderDebtPaymentComparison(){
   const all=state.ops.filter(o=>o.date?.startsWith(month)&&o.type==='debt'&&o.loan===name&&!o.imported);
   let confirmed=all.reduce((n,o)=>n+cents(o.amount),0)/100;
   let source=all.length?'Подтверждено внесёнными операциями':'Не сверено с конкретным кредитом';
-  if(isCard&&month==='2026-10'&&!all.length){confirmed=4000;source='Подтверждён перевод 4 000 ₽ с накопительного на кредитную карту 11.10.2026'}
-  const factText=all.length||(isCard&&month==='2026-10')?fmt(confirmed):'Не подтверждено';
+  if(isCard&&month==='2026-10'&&!all.length){source='Перевод 4 000 ₽ на кредитную карту отмечен отдельно; это ещё не подтверждение погашения долга.'}
+  const factText=all.length?fmt(confirmed):'Не подтверждено';
   const required=Number(d.required)||0;
   return '<div class="debt-compare-row"><strong>'+esc(name)+'</strong><div class="debt-compare-grid"><div><small>По графику банка</small><b>'+(isCard?'Уточнить':fmt(required))+'</b></div><div><small>Ваш план</small><b>'+(target?fmt(target):'Не задан')+'</b></div><div><small>Факт оплаты</small><b>'+factText+'</b></div></div><small>'+esc(source)+'</small></div>';
  });
