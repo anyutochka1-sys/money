@@ -285,14 +285,19 @@ let day={};expenses.forEach(o=>day[o.date]=(day[o.date]||0)+cents(o.amount));let
 $('dayChart').innerHTML=entries.map(([k,v])=>'<div class="bucket" title="'+esc(k)+' · '+fmt(v/100)+'"><div class="stick" style="height:'+Math.max(2,Math.round(v/high*125))+'px"></div><div class="tick">'+k.slice(8)+'</div></div>').join('')||'<p class="muted">Нет расходов</p>';
 renderHistory();
 }
+function remainingRefundCents(purchase,exceptId){
+ const used=state.ops.filter(o=>o.type==='refund'&&o.refundOf===purchase.id&&o.id!==exceptId).reduce((n,o)=>n+cents(o.amount),0);
+ return Math.max(0,cents(purchase.amount)-used);
+}
 function linkRefundToPurchase(id){
  const refund=state.ops.find(o=>o.id===id&&o.type==='refund');if(!refund)return;
- const candidates=state.ops.filter(o=>o.type==='expense'&&o.date<=refund.date&&o.date>=refund.date.slice(0,4)+'-01-01'&&(!refund.account||o.account===refund.account)&&cents(o.amount)>=cents(refund.amount)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
+ const candidates=state.ops.filter(o=>o.type==='expense'&&o.date<=refund.date&&o.date>=refund.date.slice(0,4)+'-01-01'&&(!refund.account||o.account===refund.account)&&remainingRefundCents(o,refund.id)>=cents(refund.amount)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
  if(!candidates.length){alert('Не нашла подходящих покупок на этом счёте. Возврат остаётся отдельной операцией.');return}
  const response=prompt('К какой покупке относится возврат '+fmt(refund.amount)+'?\n'+candidates.map((o,i)=>(i+1)+'. '+o.date+' · '+fmt(o.amount)+' · '+(o.description||o.itemName||o.category||'Покупка')).join('\n'),'');
  if(response===null)return;
  const original=candidates[Number(response)-1];
  if(!original){alert('Выберите номер покупки из списка');return}
+ if(remainingRefundCents(original,refund.id)<cents(refund.amount)){alert('Общая сумма возвратов превышает стоимость покупки.');return}
  if(!confirm('Привязать возврат к покупке '+fmt(original.amount)+' от '+original.date+'?'))return;
  refund.refundOf=original.id;delete refund.refundItemIndex;refund.category=original.category;refund.subcategory=original.subcategory;refund.itemName=original.itemName;
  localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
@@ -306,7 +311,7 @@ function selectRefundItem(id){
  if(reply===null)return;
  const number=Number(reply);
  if(!Number.isInteger(number)||number<0||number>purchase.items.length){alert('Выберите номер из списка');return}
- if(number===0){delete refund.refundItemIndex}else{refund.refundItemIndex=number-1}
+ if(number===0){delete refund.refundItemIndex}else{const item=purchase.items[number-1];const other=state.ops.filter(o=>o.id!==refund.id&&o.type==='refund'&&o.refundOf===purchase.id&&o.refundItemIndex===number-1).reduce((n,o)=>n+cents(o.amount),0);if(other+cents(refund.amount)>cents(item.price||item.amount)){alert('Возвраты за выбранный товар превышают его стоимость.');return}refund.refundItemIndex=number-1}
  localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
 }
 function unlinkRefund(id){
