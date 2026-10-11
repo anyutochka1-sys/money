@@ -71,7 +71,7 @@ render();
 const receiptCategories=['Продукты / готовка','Сладости','Косметика и уход','Бытовая химия','Одежда и аксессуары','Детские товары','Здоровье','Подарки','Другое'];
 let receiptItems=[];
 function receiptGuess(s){let t=s.toLowerCase();if(/шокол|ritter|конфет|батончик|печен|морож|зефир|мармел/.test(t))return 'Сладости';if(/приправа|магги|maggi|крупа|рис|молок|сыр|масл|хлеб|мяс|куриц|овощ|фрукт|макарон|яйц|сахар|чай|кофе/.test(t))return 'Продукты / готовка';if(/шампун|крем|тушь|помад|мыло|гель для душа|сыворотк|бальзам|маска для лица/.test(t))return 'Косметика и уход';if(/порошок|средство для мыть|губк|чистящ|моющ|салфетк|туалетн.*бумаг/.test(t))return 'Бытовая химия';if(/ремень|футболк|брюк|носки|платье|куртк|обувь|сумк/.test(t))return 'Одежда и аксессуары';if(/подгуз|памперс|игрушк|детск/.test(t))return 'Детские товары';if(/аптек|таблет|витамин|лекарств|ибупрофен/.test(t))return 'Здоровье';return 'Другое'}
-function receiptAddLine(name='',price=0){receiptItems.push({name,price,category:receiptGuess(name)});receiptRender()}
+function receiptAddLine(name='',price=0){receiptItems.push({name,price,category:receiptGuess(name),quantity:1,weight:0,volume:0});receiptRender()}
 function receiptRender(){let r=$('receiptLines');r.innerHTML=receiptItems.map((x,i)=>'<div style="display:grid;grid-template-columns:minmax(130px,2fr) 100px minmax(130px,1fr) 36px;gap:8px;margin:8px 0;align-items:center"><input aria-label="Товар" value="'+esc(x.name)+'" oninput="receiptEdit('+i+',\'name\',this.value)"><input aria-label="Цена" type="number" step=".01" min="0" value="'+x.price+'" oninput="receiptEdit('+i+',\'price\',this.value)"><select aria-label="Категория" onchange="receiptEdit('+i+',\'category\',this.value)">'+receiptCategories.map(c=>'<option '+(x.category===c?'selected':'')+'>'+esc(c)+'</option>').join('')+'</select><button class="danger" style="padding:7px" onclick="receiptItems.splice('+i+',1);receiptRender()">×</button></div>').join('');let sum=receiptItems.reduce((a,x)=>a+cents(x.price),0),total=cents($('receiptTotal').value);$('receiptCheck').textContent='Сумма товаров: '+fmt(sum/100)+' · Сумма чека: '+fmt(total/100)+(sum===total?' · ✓ Сходится':' · ⚠ Разница: '+fmt((total-sum)/100))}
 function receiptCheckOnly(){let sum=receiptItems.reduce((a,x)=>a+cents(x.price),0),total=cents($('receiptTotal').value);$('receiptCheck').textContent='Сумма товаров: '+fmt(sum/100)+' · Сумма чека: '+fmt(total/100)+(sum===total?' · ✓ Сходится':' · ⚠ Разница: '+fmt((total-sum)/100))}
 function receiptEdit(i,k,v){receiptItems[i][k]=k==='price'?money(v):v;if(k==='name'&&receiptItems[i].category==='Другое')receiptItems[i].category=receiptGuess(v);receiptCheckOnly()}
@@ -95,6 +95,40 @@ function removePlanned(id){if(!confirm('Удалить запланирован�
 $('budgetForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.target),category=String(f.get('category')),month=$('monthPicker').value,amount=money(f.get('amount'));let existing=state.budgets.find(b=>b.month===month&&b.category===category);if(existing)existing.amount=amount;else state.budgets.push({month,category,amount});save()};
 $('plannedForm').elements.date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 $('plannedForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.target);state.planned.push({id:'p'+Date.now(),date:String(f.get('date')),amount:money(f.get('amount')),category:String(f.get('category')),description:String(f.get('description'))});e.target.reset();save()};
+
+function itemUnitData(item){
+ const label=String(item.name||'').toLowerCase().replace(/,/g,'.');
+ let qty=Number(item.quantity)||1,weight=Number(item.weight)||0,volume=Number(item.volume)||0;
+ const num=(x)=>Number(String(x).replace(',','.'));
+ let pack=label.match(/(\d+(?:\.\d+)?)\s*(кг|г|гр|л|мл)\b/);
+ if(pack&&!weight&&!volume){let n=num(pack[1]),u=pack[2];if(u==='кг')weight=n*1000;else if(u==='г'||u==='гр')weight=n;else if(u==='л')volume=n*1000;else if(u==='мл')volume=n}
+ let unit=weight>0?'кг':volume>0?'л':'шт';
+ let amount=weight>0?weight/1000:volume>0?volume/1000:qty;
+ if(!pack&&!weight&&!volume&&!Number(item.quantity)&&!/\b\d+\s*шт\b/i.test(label))return null;
+ let price=Number(item.price)/amount;
+ return amount>0&&Number.isFinite(price)?{unit,amount,price}:null
+}
+function productKey(name){return String(name||'').toLowerCase().replace(/\d+(?:[.,]\d+)?\s*(кг|г|гр|л|мл|шт)\b/g,' ').replace(/[.,:;()]/g,' ').replace(/\s+/g,' ').trim()}
+function renderAnalytics(){
+ const month=$('analyticsMonth');if(!month)return;if(!month.value)month.value=$('monthPicker').value;
+ let cats={},products={},prices={};
+ for(let o of state.ops){if(o.type!=='expense'||!o.date?.startsWith(month.value)||!Array.isArray(o.items))continue;
+  for(let item of o.items){let val=cents(item.price),cat=item.category||'Другое',key=productKey(item.name);
+   cats[cat]=(cats[cat]||0)+val;
+   if(!key)continue;
+   if(!products[key])products[key]={name:item.name,sum:0,count:0};
+   products[key].sum+=val;products[key].count++;
+   let unit=itemUnitData(item);if(unit)(prices[key]??=[]).push({shop:o.description||'Магазин не указан',date:o.date,...unit});
+  }
+ }
+ let total=Object.values(cats).reduce((a,b)=>a+b,0);
+ $('analyticsCategories').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<div style="margin:12px 0">'+row(esc(k),fmt(v/100))+'<div class="bar"><span style="width:'+(total?v/total*100:0)+'%"></span></div></div>').join('')||'<p class="muted">В выбранном месяце пока нет расшифрованных чеков.</p>';
+ $('analyticsTop').innerHTML=Object.values(products).sort((a,b)=>b.sum-a.sum).slice(0,12).map(x=>row(esc(x.name)+' <small>· '+x.count+' покупок</small>',fmt(x.sum/100))).join('')||'<p class="muted">Товары появятся после сохранения чеков.</p>';
+ let comparisons=Object.entries(prices).filter(([k,arr])=>arr.length>1&&new Set(arr.map(x=>x.shop)).size>1);
+ $('analyticsPrices').innerHTML=comparisons.map(([k,arr])=>'<div style="margin:14px 0"><b>'+esc(k)+'</b>'+arr.map(x=>row(esc(x.shop)+' <small>'+esc(x.date)+'</small>',fmt(x.price)+' / '+esc(x.unit))).join('')+'</div>').join('')||'<p class="muted">Для сравнения нужны повторные покупки одного товара с известным весом, объёмом или количеством в разных магазинах.</p>';
+}
+$('analyticsMonth').onchange=renderAnalytics;
+
 const __render=render;render=function(){__render();renderBudget();renderPlanned();renderAnalytics()};
 render();
 
