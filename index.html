@@ -529,8 +529,9 @@ function reviewOperation(id,kind){
 }
 function reviewQueue(){
  const el=$('reconciliationQueue');if(!el)return;
- const list=reportOps().filter(o=>o.type==='unverified'||o.needsReview||o.type==='expense'&&o.imported&&!o.confirmedByUser&&!o.marketplaceClassified&&!o.ozonClassified).slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
- $('pendingCount').textContent='('+list.length+' показано)';
+ const allPending=reportOps().filter(o=>o.type==='unverified'||o.needsReview||o.type==='expense'&&o.imported&&!o.confirmedByUser&&!o.marketplaceClassified&&!o.ozonClassified);
+ const list=allPending.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+ $('pendingCount').textContent='('+allPending.length+' всего, показано '+list.length+')';
  el.innerHTML=list.length?list.map(o=>'<div class="review-line"><div><small>'+esc(o.date)+' · '+esc(o.accountName||state.accounts.find(a=>a.id===o.account)?.name||'Счёт не указан')+'</small><div class="review-desc">'+esc(o.description||o.category||'Без названия')+'</div></div><strong>'+fmt(o.amount)+'</strong><div class="review-actions"><button type="button" class="secondary" onclick="reviewOperation('+JSON.stringify(o.id).replace(/"/g,'&quot;')+',\'verify\')">Подтвердить расход</button><button type="button" class="secondary" onclick="reviewOperation('+JSON.stringify(o.id).replace(/"/g,'&quot;')+',\'income\')">Доход</button><button type="button" class="secondary" onclick="reviewOperation('+JSON.stringify(o.id).replace(/"/g,'&quot;')+',\'transfer\')">Свой перевод</button><button type="button" class="secondary" onclick="reviewOperation('+JSON.stringify(o.id).replace(/"/g,'&quot;')+',\'unverified\')">Не учитывать</button></div></div>').join(''):'<p class="muted">Нет операций на проверку за выбранный период.</p>';
 }
 function renderReconciliationSummary(){
