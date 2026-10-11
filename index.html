@@ -785,7 +785,7 @@ function classifyMarketplace(items,bank){
   let end=new Date(delivery+'T12:00:00'),start=new Date(end);
   start.setDate(start.getDate()-32);
   let lower=start.toLocaleDateString('sv-SE');
-  return state.ops.filter(o=>o.type==='expense'&&
+  return state.ops.filter(o=>o.type==='expense'&&!o.userReviewed&&!o.confirmedByUser&&!o.duplicateExcluded&&
    (o.account===(bank==='ozon'?'seed-ozon':'seed-wb')||
     new RegExp(bank==='ozon'?'ozon|озон':'wildberries|wb|вб','i').test(o.description||''))&&
    Math.abs(o.amount-item.amount)<0.005&&o.date>=lower&&o.date<=delivery);
@@ -802,7 +802,7 @@ function classifyMarketplace(items,bank){
   op.category=item.group;op.subcategory=item.subgroup;op.itemName=item.item;
   op.marketplaceClassified=bank;
  }
- if(linked.some(x=>!x.op.userReviewed&&!x.op.confirmedByUser&&!x.op.duplicateExcluded)){localStorage.setItem(KEY,JSON.stringify(state));render();}
+ if(linked.length){localStorage.setItem(KEY,JSON.stringify(state));render();}
  return {linked:linked.length,review:eligible.length-linked.length,excluded:items.length-eligible.length};
 }
 function applyOzonDetails(){
