@@ -294,17 +294,29 @@ function linkRefundToPurchase(id){
  const original=candidates[Number(response)-1];
  if(!original){alert('Выберите номер покупки из списка');return}
  if(!confirm('Привязать возврат к покупке '+fmt(original.amount)+' от '+original.date+'?'))return;
- refund.refundOf=original.id;refund.category=original.category;refund.subcategory=original.subcategory;refund.itemName=original.itemName;
+ refund.refundOf=original.id;delete refund.refundItemIndex;refund.category=original.category;refund.subcategory=original.subcategory;refund.itemName=original.itemName;
+ localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
+}
+function selectRefundItem(id){
+ const refund=state.ops.find(o=>o.id===id&&o.type==='refund');
+ const purchase=state.ops.find(o=>o.id===refund?.refundOf);
+ if(!purchase||!Array.isArray(purchase.items)||!purchase.items.length)return;
+ const options=purchase.items.map((x,i)=>(i+1)+'. '+(x.name||x.description||'Товар')+' · '+fmt(x.price||x.amount)).join('\n');
+ const reply=prompt('За какой товар вернули '+fmt(refund.amount)+'?\n'+options+'\n0. За несколько товаров / неизвестно',refund.refundItemIndex===undefined?'0':String(refund.refundItemIndex+1));
+ if(reply===null)return;
+ const number=Number(reply);
+ if(!Number.isInteger(number)||number<0||number>purchase.items.length){alert('Выберите номер из списка');return}
+ if(number===0){delete refund.refundItemIndex}else{refund.refundItemIndex=number-1}
  localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
 }
 function unlinkRefund(id){
  const op=state.ops.find(o=>o.id===id&&o.type==='refund');if(!op)return;
- delete op.refundOf;localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
+ delete op.refundOf;delete op.refundItemIndex;localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
 }
 function renderRefundReview(){
  const el=$('refundReview');if(!el)return;
  const refunds=reportOps().filter(o=>o.type==='refund').sort((a,b)=>b.date.localeCompare(a.date));
- el.innerHTML=refunds.length?refunds.map(o=>{const original=state.ops.find(x=>x.id===o.refundOf);return '<div class="archive-payment"><span>'+esc(o.date)+' · '+esc(o.description||'Возврат')+' · '+fmt(o.amount)+(original?'<small style="display:block">К покупке '+esc(original.date)+' · '+esc(original.description||original.category||'Покупка')+'</small>':'<small style="display:block">Покупка не указана</small>')+'</span><button class="secondary" type="button" onclick="'+(original?'unlinkRefund':'linkRefundToPurchase')+'('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">'+(original?'Отвязать':'Связать с покупкой')+'</button></div>'}).join(''):'<p class="muted">За выбранный период возвратов нет.</p>';
+ el.innerHTML=refunds.length?refunds.map(o=>{const original=state.ops.find(x=>x.id===o.refundOf);return '<div class="archive-payment"><span>'+esc(o.date)+' · '+esc(o.description||'Возврат')+' · '+fmt(o.amount)+(original?'<small style="display:block">К покупке '+esc(original.date)+' · '+esc(original.description||original.category||'Покупка')+'</small>':'<small style="display:block">Покупка не указана</small>')+'</span><button class="secondary" type="button" onclick="'+(original?'unlinkRefund':'linkRefundToPurchase')+'('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">'+(original?'Отвязать':'Связать с покупкой')+'</button>'+(original&&Array.isArray(original.items)&&original.items.length?'<button type="button" class="secondary" onclick="selectRefundItem('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">'+(Number.isInteger(o.refundItemIndex)?'Изменить товар':'Выбрать товар')+'</button>':'')+'</div>'}).join(''):'<p class="muted">За выбранный период возвратов нет.</p>';
 }
 function renderHistory(){let q=$('searchInput').value.toLowerCase(),t=$('typeFilter').value;let arr=state.ops.filter(o=>(!t||o.type===t)&&(!q||JSON.stringify(o).toLowerCase().includes(q))).slice().sort((a,b)=>b.date.localeCompare(a.date));$('transactionList').innerHTML='<table class="data-table"><tr><th>Дата</th><th>Назначение</th><th>Тип</th><th>Сумма</th></tr>'+arr.map(o=>'<tr><td>'+esc(o.date)+'</td><td>'+esc(o.description||o.category||'Без описания')+'<div><small>Счёт: '+esc(state.accounts.find(a=>a.id===o.account)?.name||'Не указан')+(o.type==='transfer'?' → '+esc(state.accounts.find(a=>a.id===o.destination)?.name||'Не указан'):'')+'</small></div>'+(Array.isArray(o.items)?'<details><summary>Товары ('+o.items.length+')</summary>'+o.items.map(x=>'<div>'+esc(x.name)+' · '+esc(x.category)+' · '+fmt(x.price)+'</div>').join('')+'</details>':'')+'</td><td>'+esc(({expense:'Расход',income:'Доход',family:'Помощь',transfer:'Перевод / сверка',debt:'Кредит',archivedDebt:'Платёж по долгу',archivedDebtLinked:'Привязан к кредиту',refund:'Возврат',unverified:'Требует проверки'})[o.type])+'</td><td class="num">'+fmt(o.amount)+'</td></tr>').join('')+'</table>'}
 $('searchInput').oninput=renderHistory;$('typeFilter').onchange=renderHistory;$('monthPicker').onchange=render;
@@ -521,6 +533,7 @@ function renderSpendingDonut(){
   const original=state.ops.find(p=>p.id===refund.refundOf);
   if(!original)continue;
   if(Array.isArray(original.items)&&original.items.length){
+   if(Number.isInteger(refund.refundItemIndex)&&original.items[refund.refundItemIndex]){const item=original.items[refund.refundItemIndex];insert(item.category||original.category,item.subcategory||original.subcategory,item.name||item.description||original.description,-refund.amount);continue}
    const portions=original.items.map(x=>cents(x.price||x.amount)),sum=portions.reduce((a,b)=>a+b,0);
    let left=cents(refund.amount);
    original.items.forEach((item,i)=>{const part=i===original.items.length-1?left:Math.round(cents(refund.amount)*(sum?portions[i]/sum:0));left-=part;insert(item.category||original.category,item.subcategory||original.subcategory,item.name||item.description||original.description,-part/100)});
