@@ -72,7 +72,7 @@ nav button.active{background:#455337;color:#fff}
 </style>
 </head>
 <body><header><div class="inner"><div class="logo">✳ Мои финансы <small style="font-size:12px;font-weight:400">личный бюджет</small></div><div class="btns"><button class="secondary" onclick="downloadData()">Экспорт данных</button><button onclick="goto('add')">+ Операция</button></div></div><nav id="tabs"><button data-tab="overview" class="active">Обзор</button><button data-tab="month">Бюджет · план/факт</button><button data-tab="planned">Планируемые траты</button><button data-tab="accounts">Банки</button><button data-tab="investments">Инвестиции</button><button data-tab="debts">Кредиты</button><button data-tab="history">История</button><button data-tab="add">Добавить</button><button data-tab="receipt">📷 Чек</button><button data-tab="analytics">Анализ продуктов</button><button data-tab="creditcheck">Новый кредит?</button><button data-tab="incomeplan">Календарь доходов</button><button data-tab="settings">Настройки</button></nav></header>
-<main><section class="panel active" id="overview"><div class="quick-entry card"><div class="kicker">Быстрая запись</div><h1>Что записываем?</h1><div class="quick-actions"><button type="button" id="quickExpense" class="quick-active" onclick="quickMode('expense')">− Расход</button><button type="button" id="quickIncome" onclick="quickMode('income')">+ Доход</button><label class="quick-upload">📷 Чек<input type="file" accept="image/*" capture="environment" onchange="quickReceipt(this)" style="display:none"></label></div><form id="quickForm" onsubmit="saveQuick(event)"><label>Сумма, ₽<input type="number" name="amount" inputmode="decimal" min=".01" step=".01" placeholder="0" required></label><label>Банк или счёт<select name="account" id="quickAccount" required></select></label><label>На что / откуда<input name="description" placeholder="Например, продукты или пособие"></label><label>Дата<input name="date" type="date" required></label><label class="full-row">Категория<select name="category" id="quickCategory"><option>Продукты / готовка</option><option>Сладости</option><option>Одежда и аксессуары</option><option>Маникюр</option><option>Дети</option><option>Подарки</option><option>Подписки</option><option>Дом и быт</option><option>Другое</option></select></label><button class="full-row">Сохранить операцию</button></form><small>Для перевода между своими счетами и платежа по кредиту откройте <a href="#" onclick="event.preventDefault();goto('add')">расширенную форму</a>.</small></div><h1>Общая картина</h1><p class="muted">Ваши данные хранятся только в этом браузере. Для сохранности используйте экспорт.</p><div class="grid">
+<main><section class="panel active" id="overview"><div class="quick-entry card"><div class="kicker">Быстрая запись</div><h1>Что записываем?</h1><div class="quick-actions"><button type="button" id="quickExpense" class="quick-active" onclick="quickMode('expense')">− Расход</button><button type="button" id="quickIncome" onclick="quickMode('income')">+ Доход</button><button type="button" id="quickTransfer" onclick="quickMode('transfer')">⇄ Перевод себе</button><label class="quick-upload">📷 Чек<input type="file" accept="image/*" capture="environment" onchange="quickReceipt(this)" style="display:none"></label></div><form id="quickForm" onsubmit="saveQuick(event)"><label>Сумма, ₽<input type="number" name="amount" inputmode="decimal" min=".01" step=".01" placeholder="0" required></label><label>Банк или счёт<select name="account" id="quickAccount" required></select></label><label id="quickDestinationLabel" class="hidden">На какой счёт<select name="destination" id="quickDestination"></select></label><label>На что / откуда<input name="description" placeholder="Например, продукты или пособие"></label><label>Дата<input name="date" type="date" required></label><label class="full-row">Категория<select name="category" id="quickCategory"><option>Продукты / готовка</option><option>Сладости</option><option>Одежда и аксессуары</option><option>Маникюр</option><option>Дети</option><option>Подарки</option><option>Подписки</option><option>Дом и быт</option><option>Другое</option></select></label><button class="full-row">Сохранить операцию</button></form><small>Для платежа по кредиту откройте <a href="#" onclick="event.preventDefault();goto('add')">расширенную форму</a>.</small></div><h1>Общая картина</h1><p class="muted">Ваши данные хранятся только в этом браузере. Для сохранности используйте экспорт.</p><div class="grid">
 <div class="card hero-balance"><div class="kicker">Доступные деньги</div><div class="big" id="assetTotal">0 ₽</div><small>По добавленным счетам · без инвестиций</small><small id="balanceFreshness"></small></div>
 <div class="card"><div class="kicker">Общий долг</div><div class="big" id="debtTotal">0 ₽</div><small>По введённым кредитам</small></div>
 <div class="card"><div class="kicker">Расходы за месяц</div><div class="big" id="expenseTotal">0 ₽</div><small>Без переводов между счетами</small></div>
@@ -289,20 +289,26 @@ function quickMode(mode){
  currentQuickMode=mode;
  $('quickExpense').classList.toggle('quick-active',mode==='expense');
  $('quickIncome').classList.toggle('quick-active',mode==='income');
+ $('quickTransfer').classList.toggle('quick-active',mode==='transfer');
+ $('quickDestinationLabel').classList.toggle('hidden',mode!=='transfer');
  $('quickCategory').closest('label').style.display=mode==='expense'?'':'none';
 }
 function renderQuickForm(){
  const f=$('quickForm');if(!f)return;
- let old=f.elements.account.value;
+ let old=f.elements.account.value,oldDest=f.elements.destination.value;
  $('quickAccount').innerHTML=state.accounts.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('');
  if(state.accounts.some(a=>a.id===old))f.elements.account.value=old;
+ $('quickDestination').innerHTML=state.accounts.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('');
+ if(state.accounts.some(a=>a.id===oldDest))f.elements.destination.value=oldDest;
  if(!f.elements.date.value)f.elements.date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 }
 function saveQuick(event){
  event.preventDefault();const f=new FormData($('quickForm')),account=String(f.get('account')),amount=money(f.get('amount'));
  if(amount<=0||!state.accounts.some(a=>a.id===account))return alert('Проверьте сумму и счёт');
- const op={id:'quick-'+Date.now(),date:String(f.get('date')),type:currentQuickMode,amount,account,description:String(f.get('description')||''),category:currentQuickMode==='expense'?String(f.get('category')):'Поступления'};
- state.ops.push(op);$('quickForm').reset();save();renderQuickForm();alert('Операция сохранена');
+ const destination=String(f.get('destination'));
+ if(currentQuickMode==='transfer'&&(!state.accounts.some(a=>a.id===destination)||destination===account))return alert('Выберите два разных своих счёта');
+ const op={id:'quick-'+Date.now(),date:String(f.get('date')),type:currentQuickMode,amount,account,destination:currentQuickMode==='transfer'?destination:'',description:String(f.get('description')||''),category:currentQuickMode==='expense'?String(f.get('category')):currentQuickMode==='transfer'?'Между своими счетами':'Поступления'};
+ state.ops.push(op);$('quickForm').reset();save();renderQuickForm();quickMode(currentQuickMode);alert(currentQuickMode==='transfer'?'Перевод записан. Доходы и расходы не изменились.':'Операция сохранена');
 }
 function quickReceipt(input){let file=input.files?.[0];if(!file)return;goto('receipt');receiptRead(file);input.value='';}
 function renderSpendingDonut(){
