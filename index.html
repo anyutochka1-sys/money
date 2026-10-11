@@ -743,6 +743,14 @@ function correctConfirmedOctoberExpenses(){
 function reconcileOwnTransfers(){
  const ops=state.ops.filter(o=>o.imported&&o.type==='transfer'&&!o.userReviewed&&!o.confirmedByUser&&o.account&&o.transferDirection);
  let matched=0,changed=false;
+ // Исправляем направление ранее сопоставленных пар, не изменяя банковские суммы.
+ for(const op of ops){
+  if(!op.autoTransferPaired)continue;
+  const partner=state.ops.find(x=>x.id===op.autoTransferPaired);
+  if(partner&&partner.autoTransferPaired===op.id&&op.transferDirection<0&&op.destination!==partner.account){
+   op.destination=partner.account;changed=true;
+  }
+ }
  const day=date=>Date.parse(date+'T12:00:00');
  for(const o of ops){
   if(o.autoTransferPaired)continue;
