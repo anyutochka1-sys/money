@@ -1,0 +1,30 @@
+{
+  "notes": "Planned recurring expenses only; no bank debit until actual transaction matched",
+  "items": [
+    {
+      "name": "ChatGPT",
+      "rub": 2090,
+      "from": "2026-10"
+    },
+    {
+      "name": "Клуб Кэшью",
+      "rub": 2990,
+      "from": "2026-11"
+    },
+    {
+      "name": "Алиса Дети и Алиса Про",
+      "rub": 300,
+      "from": "2026-10"
+    },
+    {
+      "name": "Ozon",
+      "rub": 199,
+      "from": "2026-10"
+    },
+    {
+      "name": "Wildberries",
+      "rub": 199,
+      "from": "2026-10"
+    }
+  ]
+}
