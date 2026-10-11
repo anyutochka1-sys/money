@@ -605,16 +605,24 @@ function excludePossibleDuplicate(id){
  op.type='unverified';op.needsReview=true;op.duplicateExcluded=true;
  localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
 }
-function renderDuplicateReview(){
- const el=$('duplicateReview');if(!el)return;
+function possibleDuplicateGroups(){
  const groups=new Map();
  for(const o of reportOps().filter(o=>o.type==='expense'&&o.account&&o.date)){
-  const k=o.date+'|'+o.account+'|'+cents(o.amount);
-  if(!groups.has(k))groups.set(k,[]);
-  groups.get(k).push(o);
+  const key=o.date+'|'+o.account+'|'+cents(o.amount);
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(o);
  }
- const duplicates=[...groups.values()].filter(g=>g.length>1&&g.some(o=>o.imported)&&g.some(o=>!o.imported));
- el.innerHTML=duplicates.length?'<h3>Возможные повторные списания ('+duplicates.length+')</h3><p class="muted">Совпали дата, сумма и счёт. Убедитесь по описаниям, что это действительно одна покупка.</p>'+duplicates.slice(0,25).map(group=>'<div class="duplicate-group">'+group.map(o=>'<div class="duplicate-line"><div><small>'+esc(o.date)+' · '+esc(state.accounts.find(a=>a.id===o.account)?.name||o.account)+'</small><div>'+esc(o.description||o.category||'Операция')+'</div><b>'+fmt(o.amount)+'</b> <small>'+(o.imported?'Банковская выписка':'Чек / вручную')+'</small></div><button type="button" class="secondary" onclick="excludePossibleDuplicate('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">Исключить запись</button></div>').join('')+'</div>').join(''):'<p class="muted">Пока нет совпадений между чеками и выписками.</p>';
+ return [...groups.values()].filter(group=>{
+  if(group.length<2)return false;
+  if(group.some(o=>o.imported)&&group.some(o=>!o.imported))return true;
+  const names=group.map(o=>String(o.description||'').trim().toLowerCase().replace(/\s+/g,' ')).filter(Boolean);
+  return names.length>1&&new Set(names).size<names.length;
+ });
+}
+function renderDuplicateReview(){
+ const el=$('duplicateReview');if(!el)return;
+ const duplicates=possibleDuplicateGroups();
+ el.innerHTML=duplicates.length?'<h3>Возможные повторные списания ('+duplicates.length+')</h3><p class="muted">Совпали дата, сумма и счёт у чека и выписки, либо дополнительно совпало описание у нескольких записей. Это повод проверить, а не доказательство дубля.</p>'+duplicates.slice(0,25).map(group=>'<div class="duplicate-group">'+group.map(o=>'<div class="duplicate-line"><div><small>'+esc(o.date)+' · '+esc(state.accounts.find(a=>a.id===o.account)?.name||o.account)+'</small><div>'+esc(o.description||o.category||'Операция')+'</div><b>'+fmt(o.amount)+'</b> <small>'+(o.imported?'Банковская выписка':'Чек / вручную')+'</small></div><button type="button" class="secondary" onclick="excludePossibleDuplicate('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">Исключить запись</button></div>').join('')+'</div>').join(''):'<p class="muted">Пока нет вероятных повторов по дате, сумме, счёту и описанию.</p>';
 }
 function renderReconciliationSummary(){
  const el=$('reconciliationSummary');if(!el)return;
@@ -625,22 +633,12 @@ function renderReconciliationSummary(){
  const sum=arr=>arr.reduce((n,o)=>n+cents(o.amount),0)/100;
  const verified=expenses.filter(o=>!o.imported||o.confirmedByUser||o.marketplaceClassified||o.ozonClassified);
  const preliminary=expenses.filter(o=>o.imported&&!o.confirmedByUser&&!o.marketplaceClassified&&!o.ozonClassified);
- const possibleDuplicates=[];
- const groups=new Map();
- for(const o of reportOps().filter(o=>o.type==='expense')){
-  if(!o.account||!o.date)continue;
-  const key=o.date+'|'+o.account+'|'+cents(o.amount);
-  if(!groups.has(key))groups.set(key,[]);
-  groups.get(key).push(o);
- }
- for(const group of groups.values()){
-  if(group.length>1&&group.some(o=>o.imported)&&group.some(o=>!o.imported))possibleDuplicates.push(group);
- }
+ const possibleDuplicates=possibleDuplicateGroups();
  el.innerHTML='<div class="reconcile-metrics">'+
  '<div><small>Расходы по выпискам, предварительно</small><strong>'+fmt(sum(expenses))+'</strong></div>'+
  '<div><small>Из них расшифровано или внесено вручную</small><strong>'+fmt(sum(verified))+'</strong></div>'+
  '<div><small>Требует проверки в расходах</small><strong>'+fmt(sum(preliminary))+'</strong></div>'+
- '</div><p class="muted">В итог уже входят операции из архива. Сомнительные переводы исключены, но оставшиеся расходы могут требовать сверки. Отдельно не прибавляйте покупки из каталогов Ozon и WB. Поступления за период: '+fmt(sum(income))+'. Операций с пометкой проверки: '+pending.length+'. Из них исключённых как возможные дубли: '+excluded.length+'.</p>';
+ '</div><p class="muted">В итог уже входят операции из архива. Сомнительные переводы исключены, но оставшиеся расходы могут требовать сверки. Отдельно не прибавляйте покупки из каталогов Ozon и WB. Поступления за период: '+fmt(sum(income))+'. Операций с пометкой проверки: '+pending.length+'. Из них исключённых как возможные дубли: '+excluded.length+'. Обнаружено групп возможных повторов: '+possibleDuplicates.length+'.</p>';
 }
 function renderPeriodSummary(){const [a,b]=reportRange(),ops=reportOps();let sum=types=>ops.filter(o=>types.includes(o.type)).reduce((n,o)=>n+cents(o.amount),0)/100;const purchases=netExpenseCentsForPeriod()/100,loanPayments=sum(['debt','archivedDebtLinked']);$('expenseTotal').textContent=fmt(purchases);$('periodDebtPayments').textContent=fmt(loanPayments);$('periodCashOutflow').textContent=fmt(purchases+loanPayments);$('incomeTotal').textContent=fmt(sum(['income']));$('familyIncomeTotal').textContent=fmt(sum(['family']));$('periodText').textContent='С '+a+' по '+b+' · возвраты: '+fmt(sum(['refund']))+' (отдельно от доходов и покупок)';document.querySelectorAll('.period-controls button').forEach((x,i)=>x.classList.toggle('selected',['day','week','month','quarter','half','year'][i]===reportPeriod))}
 $('periodDate').value=new Date().toLocaleDateString('sv-SE');
