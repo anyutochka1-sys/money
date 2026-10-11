@@ -285,7 +285,7 @@ let day={};expenses.forEach(o=>day[o.date]=(day[o.date]||0)+cents(o.amount));let
 $('dayChart').innerHTML=entries.map(([k,v])=>'<div class="bucket" title="'+esc(k)+' · '+fmt(v/100)+'"><div class="stick" style="height:'+Math.max(2,Math.round(v/high*125))+'px"></div><div class="tick">'+k.slice(8)+'</div></div>').join('')||'<p class="muted">Нет расходов</p>';
 renderHistory();
 }
-function renderHistory(){let q=$('searchInput').value.toLowerCase(),t=$('typeFilter').value;let arr=state.ops.filter(o=>(!t||o.type===t)&&(!q||JSON.stringify(o).toLowerCase().includes(q))).slice().sort((a,b)=>b.date.localeCompare(a.date));$('transactionList').innerHTML='<table class="data-table"><tr><th>Дата</th><th>Назначение</th><th>Тип</th><th>Сумма</th></tr>'+arr.map(o=>'<tr><td>'+esc(o.date)+'</td><td>'+esc(o.description||o.category||'Без описания')+'<div><small>Счёт: '+esc(state.accounts.find(a=>a.id===o.account)?.name||'Не указан')+(o.type==='transfer'?' → '+esc(state.accounts.find(a=>a.id===o.destination)?.name||'Не указан'):'')+'</small></div>'+(Array.isArray(o.items)?'<details><summary>Товары ('+o.items.length+')</summary>'+o.items.map(x=>'<div>'+esc(x.name)+' · '+esc(x.category)+' · '+fmt(x.price)+'</div>').join('')+'</details>':'')+'</td><td>'+esc(({expense:'Расход',income:'Доход',family:'Помощь',transfer:'Перевод / сверка',debt:'Кредит',archivedDebt:'Платёж по долгу',refund:'Возврат',unverified:'Требует проверки'})[o.type])+'</td><td class="num">'+fmt(o.amount)+'</td></tr>').join('')+'</table>'}
+function renderHistory(){let q=$('searchInput').value.toLowerCase(),t=$('typeFilter').value;let arr=state.ops.filter(o=>(!t||o.type===t)&&(!q||JSON.stringify(o).toLowerCase().includes(q))).slice().sort((a,b)=>b.date.localeCompare(a.date));$('transactionList').innerHTML='<table class="data-table"><tr><th>Дата</th><th>Назначение</th><th>Тип</th><th>Сумма</th></tr>'+arr.map(o=>'<tr><td>'+esc(o.date)+'</td><td>'+esc(o.description||o.category||'Без описания')+'<div><small>Счёт: '+esc(state.accounts.find(a=>a.id===o.account)?.name||'Не указан')+(o.type==='transfer'?' → '+esc(state.accounts.find(a=>a.id===o.destination)?.name||'Не указан'):'')+'</small></div>'+(Array.isArray(o.items)?'<details><summary>Товары ('+o.items.length+')</summary>'+o.items.map(x=>'<div>'+esc(x.name)+' · '+esc(x.category)+' · '+fmt(x.price)+'</div>').join('')+'</details>':'')+'</td><td>'+esc(({expense:'Расход',income:'Доход',family:'Помощь',transfer:'Перевод / сверка',debt:'Кредит',archivedDebt:'Платёж по долгу',archivedDebtLinked:'Привязан к кредиту',refund:'Возврат',unverified:'Требует проверки'})[o.type])+'</td><td class="num">'+fmt(o.amount)+'</td></tr>').join('')+'</table>'}
 $('searchInput').oninput=renderHistory;$('typeFilter').onchange=renderHistory;$('monthPicker').onchange=render;
 $('accountForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.target);state.accounts.push({id:'a'+Date.now(),name:String(f.get('name')),balance:money(f.get('balance')),balanceDate:String(f.get('balanceDate')),kind:String(f.get('kind'))});e.target.reset();save()};
 $('debtForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.target),n=String(f.get('name'));let d={name:n,principal:money(f.get('principal')),interest:money(f.get('interest')),rate:Number(f.get('rate')),required:money(f.get('required')),planned:money(f.get('planned')),bankEndDate:String(f.get('bankEndDate')||'')};let i=state.debts.findIndex(x=>x.name.toLowerCase()===n.toLowerCase());if(i<0)state.debts.push(d);else state.debts[i]=d;e.target.reset();save()};
@@ -581,12 +581,23 @@ function renderReconciliationSummary(){
  '<div><small>Требует проверки в расходах</small><strong>'+fmt(sum(preliminary))+'</strong></div>'+
  '</div><p class="muted">В итог уже входят операции из архива. Сомнительные переводы исключены, но оставшиеся расходы могут требовать сверки. Отдельно не прибавляйте покупки из каталогов Ozon и WB. Поступления за период: '+fmt(sum(income))+'. Операций с пометкой проверки: '+pending.length+'. Из них исключённых как возможные дубли: '+excluded.length+'.</p>';
 }
-function renderPeriodSummary(){const [a,b]=reportRange(),ops=reportOps();let sum=types=>ops.filter(o=>types.includes(o.type)).reduce((n,o)=>n+cents(o.amount),0)/100;const purchases=sum(['expense']),loanPayments=sum(['debt']);$('expenseTotal').textContent=fmt(purchases);$('periodDebtPayments').textContent=fmt(loanPayments);$('periodCashOutflow').textContent=fmt(purchases+loanPayments);$('incomeTotal').textContent=fmt(sum(['income','family']));$('periodText').textContent='С '+a+' по '+b;document.querySelectorAll('.period-controls button').forEach((x,i)=>x.classList.toggle('selected',['day','week','month','quarter','half','year'][i]===reportPeriod))}
+function renderPeriodSummary(){const [a,b]=reportRange(),ops=reportOps();let sum=types=>ops.filter(o=>types.includes(o.type)).reduce((n,o)=>n+cents(o.amount),0)/100;const purchases=sum(['expense']),loanPayments=sum(['debt','archivedDebtLinked']);$('expenseTotal').textContent=fmt(purchases);$('periodDebtPayments').textContent=fmt(loanPayments);$('periodCashOutflow').textContent=fmt(purchases+loanPayments);$('incomeTotal').textContent=fmt(sum(['income','family']));$('periodText').textContent='С '+a+' по '+b;document.querySelectorAll('.period-controls button').forEach((x,i)=>x.classList.toggle('selected',['day','week','month','quarter','half','year'][i]===reportPeriod))}
 $('periodDate').value=new Date().toLocaleDateString('sv-SE');
+function linkArchivedDebt(id){
+ const op=state.ops.find(o=>o.id===id&&o.type==='archivedDebt');if(!op)return;
+ const options=state.debts.map((d,i)=>(i+1)+'. '+d.name).join('\n');
+ const choice=prompt('К какому долгу относится платёж '+fmt(op.amount)+'?\n'+options,'');
+ if(choice===null)return;
+ const loan=state.debts[Number(choice)-1];
+ if(!loan){alert('Кредит не выбран');return}
+ if(!confirm('Привязать '+fmt(op.amount)+' от '+op.date+' к «'+loan.name+'»? Основной долг и проценты пока НЕ уменьшаем, пока нет банковской разбивки.'))return;
+ op.loan=loan.name;op.type='archivedDebtLinked';op.needsReview=false;op.loanLinked=true;
+ localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
+}
 function renderUnmatchedDebtPayments(month){
  const el=$('unmatchedDebtPayments');if(!el)return;
  const entries=state.ops.filter(o=>o.date?.startsWith(month)&&o.type==='archivedDebt').sort((a,b)=>b.date.localeCompare(a.date));
- el.innerHTML=entries.length?'<p class="muted">Эти операции обнаружены в выписках. Пока неизвестно, к какому кредиту и какому погашению они относятся, в фактические платежи по конкретным долгам их не включаем.</p>'+entries.map(o=>'<div class="archive-payment"><span>'+esc(o.date)+' · '+esc(o.description||o.category||'Платёж')+'</span><strong>'+fmt(o.amount)+'</strong></div>').join(''):'<p class="muted">Нет отдельно распознанных архивных платежей по долгам за этот месяц.</p>';
+ el.innerHTML=entries.length?'<p class="muted">Эти операции обнаружены в выписках. Пока неизвестно, к какому кредиту и какому погашению они относятся, в фактические платежи по конкретным долгам их не включаем.</p>'+entries.map(o=>'<div class="archive-payment"><span>'+esc(o.date)+' · '+esc(o.description||o.category||'Платёж')+'</span><strong>'+fmt(o.amount)+'</strong><button type="button" class="secondary" onclick="linkArchivedDebt('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">Привязать к кредиту</button></div>').join(''):'<p class="muted">Нет отдельно распознанных архивных платежей по долгам за этот месяц.</p>';
 }
 function renderDebtPaymentComparison(){
  const el=$('debtPaymentComparison');if(!el)return;
@@ -596,9 +607,9 @@ function renderDebtPaymentComparison(){
   const name=d.name;
   const isMortgage=/ипотек/i.test(name),isConsumer=/потребительск/i.test(name),isInstallment=/рассрочк/i.test(name),isCard=/сберкарт/i.test(name);
   const target=isConsumer&&month==='2026-10'?10000:isInstallment&&month==='2026-10'?3000:Number(d.planned)||0;
-  const all=state.ops.filter(o=>o.date?.startsWith(month)&&o.type==='debt'&&o.loan===name&&!o.imported);
+  const all=state.ops.filter(o=>o.date?.startsWith(month)&&(o.type==='debt'&&!o.imported||o.type==='archivedDebtLinked')&&o.loan===name);
   let confirmed=all.reduce((n,o)=>n+cents(o.amount),0)/100;
-  let source=all.length?'Внесено вручную в учёт; разбивка на долг и проценты учитывается только если указана':'Не сверено с конкретным кредитом';
+  let source=all.length?'Внесено в учёт или привязано из выписки; разбивка на долг и проценты учитывается только если указана':'Не сверено с конкретным кредитом';
   if(isCard&&month==='2026-10'&&!all.length){source='Перевод 4 000 ₽ на кредитную карту отмечен отдельно; это ещё не подтверждение погашения долга.'}
   const factText=all.length?fmt(confirmed):'Не подтверждено';
   const required=Number(d.required)||0;
