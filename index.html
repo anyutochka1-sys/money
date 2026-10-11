@@ -159,15 +159,17 @@ function attachLentaReceipt(){
 
 function renderIncomePlan(){
  const months=[];for(let year=2026;year<=2027;year++){let start=year===2026?9:1,end=year===2027?9:12;for(let m=start;m<=end;m++)months.push(year+'-'+String(m).padStart(2,'0'))}
+ const perChild=19294,forThree=perChild*3;
  let records=months.map(m=>{
-  let regular=m==='2026-10'?38000:(m>='2026-11'&&m<='2027-09'?57000:0);
+  let regular=m==='2026-10'?38000:(m>='2026-11'&&m<='2027-09'?forThree:0);
+  if(m==='2027-01')regular=0;
   let utility=m==='2026-09'?232:(m>='2026-10'&&m<='2027-02'?1300:0);
-  let description=m==='2026-09'?'ЖКХ за август, приблизительно 232 ₽':m==='2026-12'?'Возможны две выплаты из-за графика':m==='2027-01'?'В январе основного перечисления может не быть':m==='2027-03'?'15 марта — день рождения, подарки деньгами без известной суммы':'';
+  let description=m==='2026-09'?'ЖКХ за август, сумма приблизительная':m==='2026-12'?'Возможна дополнительная выплата в конце месяца за январь; её дата и сумма пока не подтверждены':m==='2027-01'?'Основное поступление может быть перенесено на декабрь, показано 0 ₽ до подтверждения':m==='2027-03'?'15 марта — день рождения, сумма подарков неизвестна':'';
   return {month:m,regular,utility,description}
  });
- $('incomeTimeline').innerHTML=records.filter(x=>x.description).map(x=>row(esc(x.month)+' <small>'+esc(x.description)+'</small>',x.utility?fmt(x.utility):'Дата / риск')).join('');
- $('incomeHighlights').innerHTML=row('Плановый доход: ноябрь 2026 — сентябрь 2027',fmt(57000)+' / мес.')+row('Компенсация ЖКХ: октябрь — февраль', '≈ '+fmt(1300)+' / мес.')+row('Сентябрь: компенсация за август','≈ '+fmt(232))+row('15 марта 2027: подарки','Сумма неизвестна');
- $('incomeMonths').innerHTML='<div style="overflow:auto"><table class="data-table"><tr><th>Месяц</th><th>Основной доход, ориентир</th><th>Компенсация ЖКХ</th><th>Особенности</th></tr>'+records.map(x=>'<tr><td>'+esc(x.month)+'</td><td>'+fmt(x.regular)+(x.month==='2027-01'?' <small>не ожидаем по календарю перечислений</small>':'')+'</td><td>'+(x.utility?'≈ '+fmt(x.utility):'—')+'</td><td>'+esc(x.description||'Проверять фактические поступления')+'</td></tr>').join('')+'</table></div>';
+ $('incomeTimeline').innerHTML=records.filter(x=>x.description).map(x=>row(esc(x.month)+' <small>'+esc(x.description)+'</small>',x.utility?'≈ '+fmt(x.utility):'Дата / риск')).join('');
+ $('incomeHighlights').innerHTML=row('Точная сумма за одного ребёнка',fmt(perChild))+row('Трое детей · 19 294 × 3',fmt(forThree))+row('Ожидаемый ежемесячный размер пособий',fmt(forThree))+row('ЖКХ: октябрь — февраль','≈ '+fmt(1300)+' / мес.')+row('15 марта 2027: денежные подарки','Сумма неизвестна');
+ $('incomeMonths').innerHTML='<div style="overflow:auto"><table class="data-table"><tr><th>Месяц</th><th>Пособия, ожидаемое поступление</th><th>Компенсация ЖКХ</th><th>Особенности</th></tr>'+records.map(x=>'<tr><td>'+esc(x.month)+'</td><td>'+fmt(x.regular)+(x.month==='2027-01'?' <small>риск переноса в декабрь</small>':'')+'</td><td>'+(x.utility?'≈ '+fmt(x.utility):'—')+'</td><td>'+esc(x.description||'Сверяем с фактическим поступлением')+'</td></tr>').join('')+'</table></div>';
 }
 const renderWithAnalytics=render;render=function(){renderWithAnalytics();renderIncomePlan()};
 render();
