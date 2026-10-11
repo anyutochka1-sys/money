@@ -79,7 +79,7 @@ nav button.active{background:#455337;color:#fff}
 <div class="card"><div class="kicker">Доходы за период</div><div class="big" id="incomeTotal">0 ₽</div><small>Помощь семьи отдельно</small></div>
 <div class="card wide"><h2>Куда уходят деньги</h2><div class="spending-viz"><div id="expenseDonut" class="donut"><span id="donutText">0 ₽</span></div><div id="cats"></div></div></div>
 <div class="card wide"><h2>Банки <button class="secondary mini" onclick="goto('accounts')">Все счета →</button></h2><div id="bankQuickLinks" class="quick-bank-grid"></div></div><div class="card wide"><h2>Последние операции</h2><div id="latest"></div></div>
-<div class="card full"><div class="note"><b>Стартовые операции:</b> выписки и чеки внесены только там, где суммы подтверждены. Начальные остатки счетов основаны на последней известной сверке и требуют проверки с банком. Запланированные платежи не считаются совершёнными.</div></div><div class="card full"><div class="note"><b>Как считается бюджет:</b> перевод со своего счёта на свой не создаёт дохода или расхода; помощь родственников отделяется от гарантированных доходов; платежи по кредитам отражаются в отдельной категории. Для банковской сверки требуется сверить начальные остатки и все движения.</div></div>
+<div class="card full"><div class="note" id="archiveStatus">Загружаем архив операций…</div></div><div class="card full"><div class="note"><b>Стартовые операции:</b> выписки и чеки внесены только там, где суммы подтверждены. Начальные остатки счетов основаны на последней известной сверке и требуют проверки с банком. Запланированные платежи не считаются совершёнными.</div></div><div class="card full"><div class="note"><b>Как считается бюджет:</b> перевод со своего счёта на свой не создаёт дохода или расхода; помощь родственников отделяется от гарантированных доходов; платежи по кредитам отражаются в отдельной категории. Для банковской сверки требуется сверить начальные остатки и все движения.</div></div>
 </div></section>
 <section class="panel" id="month"><h1>Бюджет и план / факт</h1><div class="card"><label style="max-width:220px">Месяц <input type="month" id="monthPicker"></label><div id="monthTable"></div><div class="grid section"><div class="card wide"><h2>Выполнение бюджета</h2><div id="budgetBars"></div></div><div class="card wide"><h2>Запланировать категорию</h2><form id="budgetForm"><label>Категория<select name="category" id="budgetCategory"><option>Продукты / готовка</option><option>Сладости</option><option>Косметика и уход</option><option>Маникюр</option><option>Одежда и аксессуары</option><option>Дети</option><option>Подарки</option><option>Подписки</option><option>Транспорт</option><option>Дом и быт</option><option>Кредиты</option><option>Другое</option></select></label><label>Лимит, ₽<input type="number" name="amount" min="0" step=".01" required></label><button class="full-row" style="grid-column:1/-1">Сохранить план</button></form></div></div></div><div class="card section"><h2>Расходы по дням</h2><div id="dayChart" class="chart"></div></div></section>
 <section class="panel" id="planned"><h1>Планируемые траты</h1><div class="grid"><div class="card wide"><h2>Что предстоит купить и оплатить</h2><div id="plannedList"></div></div><div class="card wide"><h2>Добавить предстоящий расход</h2><form id="plannedForm"><label>Дата<input name="date" type="date" required></label><label>Сумма, ₽<input name="amount" type="number" min=".01" step=".01" required></label><label>Категория<select name="category"><option>Подарки</option><option>Продукты / готовка</option><option>Сладости</option><option>Косметика и уход</option><option>Одежда и аксессуары</option><option>Дети</option><option>Подписки</option><option>Дом и быт</option><option>Кредиты</option><option>Другое</option></select></label><label>Описание<input name="description" required placeholder="Например, подарок мужу"></label><button class="full-row" style="grid-column:1/-1">Добавить в план</button></form></div></div></section>
@@ -399,6 +399,36 @@ function choosePeriod(p){if(p)reportPeriod=p;render()}
 function renderPeriodSummary(){const [a,b]=reportRange(),ops=reportOps();let sum=types=>ops.filter(o=>types.includes(o.type)).reduce((n,o)=>n+cents(o.amount),0)/100;$('expenseTotal').textContent=fmt(sum(['expense']));$('incomeTotal').textContent=fmt(sum(['income','family']));$('periodText').textContent='С '+a+' по '+b;document.querySelectorAll('.period-controls button').forEach((x,i)=>x.classList.toggle('selected',['day','week','month','quarter','half','year'][i]===reportPeriod))}
 $('periodDate').value=new Date().toLocaleDateString('sv-SE');
 const bankRenderPrevious=render;render=function(){bankRenderPrevious();renderBankViews();renderQuickForm();renderPeriodSummary();renderSpendingDonut()};
+
+async function loadArchivedOperations(){
+ const info=document.getElementById('archiveStatus');
+ try{
+ const result=await fetch('./data/statement-operations-2026.json');
+ if(!result.ok)throw Error('HTTP '+result.status);
+ const body=await result.json();
+ const ids=new Set(state.ops.map(o=>o.id));
+ let added=0;
+ for(const x of body.operations||[]){
+ if(ids.has(x.id)||!x.date||!Number.isFinite(x.signed))continue;
+ const desc=String(x.description||''),source=String(x.sourceType||''),category=String(x.category||'Другое');
+ const transfer=/перевод|собственных/i.test(source)||/перевод|сбп|karta-vklad|vklad-karta/i.test(desc)||/между своими|требуется идентификация/i.test(category);
+ const refund=/возврат|отмена/i.test(desc+' '+category);
+ let type='unverified';
+ if(transfer)type='transfer';
+ else if(refund)type='refund';
+ else if(/кредит|платёж по долгу/i.test(source+' '+category))type='archivedDebt';
+ else if(x.signed<0&&x.budgetExpense>0)type='expense';
+ else if(x.signed>0&&x.budgetIncome>0&&!/требует проверки/i.test(category))type='income';
+ const map={'Сбер 6993':'seed-sber-6993','Сбер 1814':'seed-sber-1814','Накопительный':'seed-sber-savings','Ozon основной':'seed-ozon','Ozon дополнительный':'seed-ozon-savings','Т-Банк 5733':'seed-tbank'};
+ state.ops.push({id:x.id,date:x.date,type,amount:Math.abs(x.signed),account:map[x.accountName]||'',category,description:desc,imported:true,sourceFile:x.sourceFile,needsReview:type==='unverified'||x.review==='Да'});
+ ids.add(x.id);added++;
+ }
+ if(added)localStorage.setItem(KEY,JSON.stringify(state));
+ if(info)info.textContent='Архив: '+(body.operations||[]).length+' операций в исходной подборке. Спорные переводы не включаются в расходы.';
+ if(added)render();
+ }catch(e){if(info)info.textContent='Архив временно недоступен: '+e.message}
+}
+loadArchivedOperations();
 
 render();
 </script></body></html>
