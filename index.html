@@ -35,7 +35,7 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
 // Подтверждённые сведения на 11.10.2026. Начальные остатки не корректируются задним числом.
 (function initializeKnownData(){
  const accounts=[
- {id:'seed-sber-6993',name:'Сбер ••6993',balance:1129.34,balanceDate:'2026-10-11',kind:'Карта'},
+ {id:'seed-sber-6993',name:'Сбер ••6993',balance:829.34,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-sber-1814',name:'Сбер ••1814',balance:0,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-sber-savings',name:'Сбер · накопительный',balance:12000,balanceDate:'2026-10-11',kind:'Накопительный счёт'},
  {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'},
@@ -44,6 +44,9 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  ];
  state.accounts=state.accounts.filter(a=>!['seed-sber-card2','seed-sber-card3'].includes(a.id));
  for(const a of accounts)if(!state.accounts.some(x=>x.id===a.id||x.name===a.name))state.accounts.push(a);
+ // Последняя сверка по снимку Сбер от 11.10.2026 после перевода 300 ₽.
+ const sber6993=state.accounts.find(a=>a.id==='seed-sber-6993');if(sber6993&&(!sber6993.balanceDate||sber6993.balanceDate<='2026-10-11')&&sber6993.balance===1129.34){sber6993.balance=829.34;sber6993.balanceDate='2026-10-11'}
+
  const debts=[
  {name:'Ипотека Сбер',principal:493575.17,interest:1501.01,rate:18.5,required:8299.50,planned:15000,bankEndDate:'2040-05-03'},
  {name:'Потребительский кредит Сбер',principal:100591.89,interest:470.71,rate:24.4,required:3062.90,planned:15000,bankEndDate:'2031-04-26'},
@@ -56,8 +59,9 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  {id:'seed-lenta-1010',date:'2026-10-10',type:'expense',account:'seed-sber-6993',amount:498.95,category:'Продукты / готовка',description:'Лента · товары из чека',items:[{name:'Листовой салат',price:27.65,category:'Продукты / готовка'},{name:'Яйца Белоречье, 10 шт.',price:92.14,category:'Продукты / готовка'},{name:'Творог Савушкин Нежный, 10 шт.',price:318.92,category:'Продукты / готовка'},{name:'Лаваш, 300 г',price:60.24,category:'Продукты / готовка'}]},
  {id:'seed-razgulyai-1011',date:'2026-10-11',type:'expense',account:'seed-sber-6993',amount:324.97,category:'Продукты / готовка',description:'Разгуляй · продукты и сладости',items:[{name:'Приправа Maggi для плова',price:59,category:'Продукты / готовка'},{name:'Шоколад Ritter Sport с фисташкой',price:199,category:'Сладости'},{name:'Шоколад Победа горький',price:66.97,category:'Сладости'}]},
  {id:'seed-wb-belt-1011',date:'2026-10-11',type:'expense',account:'seed-wb',amount:405,category:'Одежда и аксессуары',description:'Wildberries · ремень'},
- {id:'seed-transfer-wb-1011',date:'2026-10-11',type:'transfer',account:'',destination:'seed-wb',amount:300,category:'Другое',description:'Перевод себе на WB; исходный счёт требует уточнения'}
+ {id:'seed-transfer-wb-1011',date:'2026-10-11',type:'transfer',account:'seed-sber-6993',destination:'seed-wb',amount:300,category:'Другое',description:'Перевод себе на WB; исходный счёт требует уточнения'}
  ];
+ const oldTransfer=state.ops.find(o=>o.id==='seed-transfer-wb-1011');if(oldTransfer)oldTransfer.account='seed-sber-6993';
  for(const o of ops)if(!state.ops.some(x=>x.id===o.id||x.date===o.date&&x.type===o.type&&Math.abs(x.amount-o.amount)<.01&&(x.description||'').toLowerCase().includes(o.description.split(' · ')[0].toLowerCase())))state.ops.push(o);
  const budgets=[{month:'2026-10',category:'Кредиты',amount:27500},{month:'2026-10',category:'Подписки',amount:2788}];
  for(let y=2026;y<=2027;y++)for(let m=1;m<=12;m++){let month=y+'-'+String(m).padStart(2,'0');if(month<'2026-10'||month>'2027-09')continue;budgets.push({month,category:'Маникюр',amount:2200});if(month>='2026-11'){budgets.push({month,category:'Подписки',amount:5778},{month,category:'Телефон',amount:575},{month,category:'Кредиты',amount:33000})}}
