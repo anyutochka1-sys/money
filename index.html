@@ -584,7 +584,7 @@ function reviewOperation(id,kind){
  }else if(kind==='unverified'){
   op.type='unverified';op.needsReview=true;op.confirmedByUser=false;
  }
- localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
+ op.userReviewed=true;localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
 }
 let reviewVisible=20;
 function showMoreReview(){reviewVisible+=20;reviewQueue()}
