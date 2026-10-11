@@ -367,7 +367,7 @@ function setExpenseDrill(level,name){
  renderSpendingDonut();
 }
 function renderSpendingDonut(){
- const month=$('monthPicker').value;const ops=state.ops.filter(o=>o.date?.startsWith(month)&&o.type==='expense');
+ const ops=reportOps().filter(o=>o.type==='expense');
  const tree={};
  function insert(group,sub,item,amount){
   const g=String(group||'Другое'),p=String(sub||'Без подгруппы'),n=String(item||'Без названия'),v=cents(amount);
@@ -395,7 +395,10 @@ function renderSpendingDonut(){
 }
 
 initQuickCategories();
-const bankRenderPrevious=render;render=function(){bankRenderPrevious();renderBankViews();renderQuickForm();renderSpendingDonut()};
+function choosePeriod(p){if(p)reportPeriod=p;render()}
+function renderPeriodSummary(){const [a,b]=reportRange(),ops=reportOps();let sum=types=>ops.filter(o=>types.includes(o.type)).reduce((n,o)=>n+cents(o.amount),0)/100;$('expenseTotal').textContent=fmt(sum(['expense']));$('incomeTotal').textContent=fmt(sum(['income','family']));$('periodText').textContent='С '+a+' по '+b;document.querySelectorAll('.period-controls button').forEach((x,i)=>x.classList.toggle('selected',['day','week','month','quarter','half','year'][i]===reportPeriod))}
+$('periodDate').value=new Date().toLocaleDateString('sv-SE');
+const bankRenderPrevious=render;render=function(){bankRenderPrevious();renderBankViews();renderQuickForm();renderPeriodSummary();renderSpendingDonut()};
 
 render();
 </script></body></html>
