@@ -545,6 +545,17 @@ function renderReconciliationSummary(){
  const sum=arr=>arr.reduce((n,o)=>n+cents(o.amount),0)/100;
  const verified=expenses.filter(o=>!o.imported||o.confirmedByUser||o.marketplaceClassified||o.ozonClassified);
  const preliminary=expenses.filter(o=>o.imported&&!o.confirmedByUser&&!o.marketplaceClassified&&!o.ozonClassified);
+ const possibleDuplicates=[];
+ const groups=new Map();
+ for(const o of reportOps().filter(o=>o.type==='expense')){
+  if(!o.account||!o.date)continue;
+  const key=o.date+'|'+o.account+'|'+cents(o.amount);
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(o);
+ }
+ for(const group of groups.values()){
+  if(group.length>1&&group.some(o=>o.imported)&&group.some(o=>!o.imported))possibleDuplicates.push(group);
+ }
  el.innerHTML='<div class="reconcile-metrics">'+
  '<div><small>Расходы по выпискам, предварительно</small><strong>'+fmt(sum(expenses))+'</strong></div>'+
  '<div><small>Из них расшифровано или внесено вручную</small><strong>'+fmt(sum(verified))+'</strong></div>'+
@@ -597,6 +608,8 @@ async function loadArchivedOperations(){
  let added=0;
  for(const x of body.operations||[]){
  if(ids.has(x.id)||!x.date||!Number.isFinite(x.signed))continue;
+ const srcAccount={'Сбер 6993':'seed-sber-6993','Сбер 1814':'seed-sber-1814','Накопительный':'seed-sber-savings','Ozon основной':'seed-ozon','Ozon дополнительный':'seed-ozon-savings','Т-Банк 5733':'seed-tbank'}[x.accountName]||'';
+ if(srcAccount&&state.ops.some(o=>o.id?.startsWith('seed-')&&o.date===x.date&&o.account===srcAccount&&Math.abs(o.amount-Math.abs(x.signed))<.005))continue;
  const desc=String(x.description||''),source=String(x.sourceType||''),category=String(x.category||'Другое');
  const transfer=/перевод|собственных/i.test(source)||/перевод|сбп|karta-vklad|vklad-karta/i.test(desc)||/между своими|требуется идентификация/i.test(category);
  const refund=/возврат|отмена/i.test(desc+' '+category);
