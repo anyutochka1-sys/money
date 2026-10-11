@@ -117,6 +117,47 @@ main{width:100%;padding:16px 12px 56px}
 #overview #latest .finance-row{grid-template-columns:minmax(0,1fr)}
 #overview #latest .finance-row>b{text-align:left}
 }
+</style><style id="mobile-rebuild-v2">
+.activity-item{display:block;width:100%;min-width:0;padding:14px 0;border-bottom:1px solid #eae2d6}
+.activity-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.activity-top span{font-size:12px;color:#8a806d}
+.activity-top strong{font-size:19px;color:#405033;font-variant-numeric:tabular-nums;white-space:nowrap}
+.activity-description{font-size:14px;line-height:1.5;overflow-wrap:anywhere;margin:5px 0}
+.activity-item small{font-size:12px}
+.archive-details{grid-column:1/-1;font-size:13px;color:#837968}
+.archive-details summary{cursor:pointer;padding:12px;color:#59654e}
+.archive-details .note{margin-top:8px;font-size:12px}
+@media(max-width:720px){
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{font-size:14px}
+main{width:100%;max-width:100%;padding:14px 14px 70px}
+#overview{width:100%;max-width:100%;min-width:0}
+#overview>.grid{display:flex!important;flex-direction:column;gap:12px;width:100%;min-width:0}
+#overview>.grid>.card{display:block;width:100%;max-width:100%;min-width:0;flex:0 0 auto;padding:18px!important;grid-column:auto!important}
+#overview .quick-entry{padding:18px;margin-bottom:16px}
+#overview .quick-entry .quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#overview .quick-actions button{white-space:normal;min-width:0;line-height:1.25;font-size:12px;padding:12px 5px}
+#overview .quick-entry form{display:flex;flex-direction:column;gap:12px}
+#overview .quick-entry form>*{min-width:0;width:100%}
+#overview .category-steps{display:flex;flex-direction:column}
+#overview .period-panel{margin:0 0 12px;padding:16px}
+#overview .period-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#overview .period-controls button{padding:10px 5px;font-size:12px}
+#overview .card .big{font-size:clamp(24px,8vw,37px)!important;white-space:normal;overflow-wrap:anywhere;line-height:1.2}
+#overview .kicker{font-size:11px}
+#overview .hero-balance .big{font-size:clamp(28px,9vw,41px)!important}
+#overview .spending-viz{display:flex;flex-direction:column;min-width:0}
+#overview .spending-viz>#cats{width:100%;min-width:0}
+#overview .quick-bank-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#overview .quick-bank{min-width:0;width:100%;overflow:hidden}
+#overview .quick-bank strong{font-size:clamp(13px,4vw,18px);overflow-wrap:anywhere}
+#overview #latest{width:100%;min-width:0;overflow:visible}
+#overview .card h2{font-size:19px;line-height:1.3}
+#overview .mini{float:none;display:inline-block;margin-left:6px}
+#overview .note{max-width:100%;overflow-wrap:anywhere}
+#overview .split{min-width:0;gap:8px}
+#overview .drill-row{width:100%;min-width:0}
+}
 </style></head>
 <body><header><div class="inner"><div class="logo">✳ Мои финансы <small style="font-size:12px;font-weight:400">личный бюджет</small></div><div class="btns"><button class="secondary" onclick="downloadData()">Экспорт данных</button><button onclick="goto('add')">+ Операция</button></div></div><nav id="tabs"><button data-tab="overview" class="active">Обзор</button><button data-tab="month">Бюджет · план/факт</button><button data-tab="planned">Планируемые траты</button><button data-tab="accounts">Банки</button><button data-tab="investments">Инвестиции</button><button data-tab="debts">Кредиты</button><button data-tab="history">История</button><button data-tab="add">Добавить</button><button data-tab="receipt">📷 Чек</button><button data-tab="analytics">Анализ продуктов</button><button data-tab="creditcheck">Новый кредит?</button><button data-tab="incomeplan">Календарь доходов</button><button data-tab="settings">Настройки</button></nav></header>
 <main><section class="panel active" id="overview"><div class="quick-entry card"><div class="kicker">Быстрая запись</div><h1>Что записываем?</h1><div class="quick-actions"><button type="button" id="quickExpense" class="quick-active" onclick="quickMode('expense')">− Расход</button><button type="button" id="quickIncome" onclick="quickMode('income')">+ Доход</button><button type="button" id="quickTransfer" onclick="quickMode('transfer')">⇄ Перевод себе</button></div><form id="quickForm" onsubmit="saveQuick(event)"><label>Сумма, ₽<input type="number" name="amount" inputmode="decimal" min=".01" step=".01" placeholder="0" required></label><label>Банк или счёт<select name="account" id="quickAccount" required></select></label><label id="quickDestinationLabel" class="hidden">На какой счёт<select name="destination" id="quickDestination"></select></label><label>На что / откуда<input name="description" placeholder="Например, продукты или пособие"></label><label>Дата<input name="date" type="date" required></label><div id="quickCategoryBlock" class="full-row category-steps"><label>Большая группа<select name="category" id="quickCategory" onchange="updateQuickCategories()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(1)">+ Добавить группу</button></label><label>Подгруппа<select name="subcategory" id="quickSubcategory" onchange="updateQuickItems()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(2)">+ Добавить подгруппу</button></label><label>Конкретная покупка / третья группа<input name="itemName" id="quickItemName" list="quickItemSuggestions" placeholder="Например, батончик Milky Way или шапка Мире"><datalist id="quickItemSuggestions"></datalist><button type="button" class="secondary cat-add" onclick="addQuickCategory(3)">+ Добавить товар</button></label></div><label id="quickAttachmentLabel" class="full-row quick-attach">📎 Прикрепить чек или документ<input id="quickAttachment" type="file" accept="image/*,application/pdf" onchange="quickAttachmentSelected(this)"><small id="quickAttachmentStatus">Необязательно</small></label><button class="full-row">Сохранить операцию</button></form><small>Для платежа по кредиту откройте <a href="#" onclick="event.preventDefault();goto('add')">расширенную форму</a>.</small></div><div class="period-panel"><h1>Общая картина</h1><div class="period-controls"><button onclick="choosePeriod('day')">День</button><button onclick="choosePeriod('week')">Неделя</button><button onclick="choosePeriod('month')">Месяц</button><button onclick="choosePeriod('quarter')">Квартал</button><button onclick="choosePeriod('half')">Полгода</button><button onclick="choosePeriod('year')">Год</button></div><label>Дата отчёта<input type="date" id="periodDate" onchange="choosePeriod()"></label><small id="periodText"></small></div><p class="muted">Ваши данные хранятся только в этом браузере. Для сохранности используйте экспорт.</p><div class="grid">
@@ -126,7 +167,7 @@ main{width:100%;padding:16px 12px 56px}
 <div class="card"><div class="kicker">Доходы за период</div><div class="big" id="incomeTotal">0 ₽</div><small>Помощь семьи отдельно</small></div>
 <div class="card wide"><h2>Куда уходят деньги</h2><div class="spending-viz"><div id="expenseDonut" class="donut"><span id="donutText">0 ₽</span></div><div id="cats"></div></div></div>
 <div class="card wide"><h2>Банки <button class="secondary mini" onclick="goto('accounts')">Все счета →</button></h2><div id="bankQuickLinks" class="quick-bank-grid"></div></div><div class="card wide"><h2>Последние операции</h2><div id="latest"></div></div>
-<div class="card full"><div class="note" id="recentArchiveStatus">Загружается архив сентября–октября…</div></div><div class="card full"><div class="note" id="archiveStatus">Загружаем архив операций…</div></div><div class="card full"><div class="note"><b>Стартовые операции:</b> выписки и чеки внесены только там, где суммы подтверждены. Начальные остатки счетов основаны на последней известной сверке и требуют проверки с банком. Запланированные платежи не считаются совершёнными.</div></div><div class="card full"><div class="note"><b>Как считается бюджет:</b> перевод со своего счёта на свой не создаёт дохода или расхода; помощь родственников отделяется от гарантированных доходов; платежи по кредитам отражаются в отдельной категории. Для банковской сверки требуется сверить начальные остатки и все движения.</div></div>
+<details class="archive-details"><summary>Состояние импорта выписок</summary><div class="note" id="recentArchiveStatus">Загружаются записи сентября–октября…</div><div class="note" id="archiveStatus">Загружаются банковские операции…</div><p class="muted">История операций и категорий предварительная; переводы между своими счетами не учитываются как покупки.</p></details>
 </div></section>
 <section class="panel" id="month"><h1>Бюджет и план / факт</h1><div class="card"><label style="max-width:220px">Месяц <input type="month" id="monthPicker"></label><div id="monthTable"></div><div class="grid section"><div class="card wide"><h2>Выполнение бюджета</h2><div id="budgetBars"></div></div><div class="card wide"><h2>Запланировать категорию</h2><form id="budgetForm"><label>Категория<select name="category" id="budgetCategory"><option>Продукты / готовка</option><option>Сладости</option><option>Косметика и уход</option><option>Маникюр</option><option>Одежда и аксессуары</option><option>Дети</option><option>Подарки</option><option>Подписки</option><option>Транспорт</option><option>Дом и быт</option><option>Кредиты</option><option>Другое</option></select></label><label>Лимит, ₽<input type="number" name="amount" min="0" step=".01" required></label><button class="full-row" style="grid-column:1/-1">Сохранить план</button></form></div></div></div><div class="card section"><h2>Расходы по дням</h2><div id="dayChart" class="chart"></div></div></section>
 <section class="panel" id="planned"><h1>Планируемые траты</h1><div class="grid"><div class="card wide"><h2>Что предстоит купить и оплатить</h2><div id="plannedList"></div></div><div class="card wide"><h2>Добавить предстоящий расход</h2><form id="plannedForm"><label>Дата<input name="date" type="date" required></label><label>Сумма, ₽<input name="amount" type="number" min=".01" step=".01" required></label><label>Категория<select name="category"><option>Подарки</option><option>Продукты / готовка</option><option>Сладости</option><option>Косметика и уход</option><option>Одежда и аксессуары</option><option>Дети</option><option>Подписки</option><option>Дом и быт</option><option>Кредиты</option><option>Другое</option></select></label><label>Описание<input name="description" required placeholder="Например, подарок мужу"></label><button class="full-row" style="grid-column:1/-1">Добавить в план</button></form></div></div></section>
@@ -213,7 +254,7 @@ $('expenseTotal').textContent=fmt(sum(expenses));$('incomeTotal').textContent=fm
 let byCat={};expenses.forEach(o=>{if(Array.isArray(o.items)&&o.items.length){o.items.forEach(x=>{let k=x.category||'Другое';byCat[k]=(byCat[k]||0)+cents(x.price)})}else{let k=o.category||'Другое';byCat[k]=(byCat[k]||0)+cents(o.amount)}});
 let max=Math.max(1,...Object.values(byCat));
 
-$('latest').innerHTML=state.ops.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6).map(o=>row(esc(o.date+' · '+(o.description||o.category||o.type)),fmt(o.amount))).join('')||'<p class="muted">Операций пока нет.</p>';
+$('latest').innerHTML=state.ops.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6).map(o=>'<div class="activity-item"><div class="activity-top"><span>'+esc(o.date)+'</span><strong>'+((o.type==='expense'||o.type==='debt')?'−':o.type==='transfer'?'⇄':'+')+fmt(o.amount)+'</strong></div><div class="activity-description">'+esc(o.description||o.itemName||o.category||o.type)+'</div><small>'+esc(o.type==='transfer'?'Между своими счетами':o.type==='expense'?'Расход':o.type==='income'?'Доход':o.type==='family'?'Помощь семьи':o.type==='debt'?'Платёж по кредиту':o.category||'Операция')+'</small></div>').join('')||'<p class="muted">Операций пока нет.</p>';
 $('accountList').innerHTML=state.accounts.map(a=>row(esc(a.name)+' <small>'+esc(a.kind)+(a.balanceDate?' · остаток на '+esc(a.balanceDate):' · дата остатка не указана')+'</small>',fmt(balance(a)))).join('')||'<p class="muted">Добавьте счета с остатками на выбранную дату.</p>';
 $('debtList').innerHTML=state.debts.map(d=>{let b=debtBalance(d);return '<div style="margin-bottom:14px">'+row(esc(d.name),fmt(b.principal+b.interest))+'<small>Основной долг '+fmt(b.principal)+' · проценты '+fmt(b.interest)+' · ставка '+esc(d.rate)+'%'+(d.bankEndDate?' · конец по графику '+esc(d.bankEndDate):'')+'</small></div>'}).join('')||'<p class="muted">Добавьте кредиты по данным банков.</p>';
 $('opAccount').innerHTML=state.accounts.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('');
