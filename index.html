@@ -444,11 +444,24 @@ let activeBank='sber';
 const bankCatalog=[['sber','Сбер'],['ozon','Ozon'],['wb','WB'],['tbank','Т-Банк'],['vtb','ВТБ'],['alfa','Альфа-Банк'],['other','Другие']];
 function bankOfAccount(a){let n=String(a.name||'').toLowerCase();if(/сбер|sber/.test(n))return 'sber';if(/ozon|озон/.test(n))return 'ozon';if(/wb|wildberries|вб/.test(n))return 'wb';if(/т-банк|тбанк|t-bank|tbank|тинькофф/.test(n))return 'tbank';if(/втб|vtb/.test(n))return 'vtb';if(/альфа|alfa|alpha/.test(n))return 'alfa';return 'other'}
 function selectBank(key){activeBank=key;renderBankViews();}
+function updateAccountSnapshot(id){
+ const a=state.accounts.find(x=>x.id===id);if(!a)return;
+ const entered=prompt('Остаток на счёте «'+a.name+'» в рублях на выбранную дату',String(balance(a)));
+ if(entered===null)return;
+ const normalized=entered.trim().replace(/\s/g,'').replace(',','.');
+ if(!normalized||!Number.isFinite(Number(normalized)))return alert('Введите числовой остаток.');
+ const date=prompt('Дата остатка (ГГГГ-ММ-ДД)',new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10));
+ if(date===null)return;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+'T12:00:00')))return alert('Неверная дата.');
+ if(a.balanceDate&&date<a.balanceDate&&!confirm('Выбрана дата раньше последнего контрольного остатка. Продолжить?'))return;
+ a.balance=Number(normalized);a.balanceDate=date;a.needsReconciliation=false;
+ save();
+}
 function renderBankViews(){
  const bankBlocks=bankCatalog.map(([key,label])=>{
  const arr=state.accounts.filter(a=>bankOfAccount(a)===key);if(!arr.length)return '';
  const total=availableBalanceRub(arr);
- return '<div class="bank-group"><div class="split"><h2>'+esc(label)+'</h2><strong>'+fmt(total)+'</strong></div>'+arr.map(a=>'<div class="bank-account"><div class="split"><span>'+esc(a.name)+'</span><b>'+(a.needsReconciliation&&!a.balanceDate?'Не сверено':fmt(balance(a)))+'</b></div><small>'+esc(a.kind)+(a.balanceDate?' · остаток от '+esc(a.balanceDate):' · требуется сверка')+'</small></div>').join('')+'</div>';
+ return '<div class="bank-group"><div class="split"><h2>'+esc(label)+'</h2><strong>'+fmt(total)+'</strong></div>'+arr.map(a=>'<div class="bank-account"><div class="split"><span>'+esc(a.name)+'</span><b>'+(a.needsReconciliation&&!a.balanceDate?'Не сверено':fmt(balance(a)))+'</b></div><small>'+esc(a.kind)+(a.balanceDate?' · остаток от '+esc(a.balanceDate):' · требуется сверка')+'</small><button type="button" class="secondary" onclick="updateAccountSnapshot('+JSON.stringify(a.id).replace(/"/g,'&quot;')+')">Обновить остаток</button></div>').join('')+'</div>';
  }).join('');
  $('bankSummary').innerHTML='<small>На плашках банков показаны только доступные деньги на картах и текущих счетах. Накопления ниже отображаются отдельно. Остатки не синхронизированы с банками.</small>';
  $('accountList').innerHTML='<div class="bank-groups">'+bankBlocks+'</div>';
