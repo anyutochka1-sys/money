@@ -69,7 +69,7 @@ nav button.active{background:#455337;color:#fff}
 .bank-group h2{margin:0}
 .quick-bank{cursor:default}
 @media(max-width:540px){.quick-entry{padding:17px}.quick-entry form{grid-template-columns:1fr}.spending-viz{grid-template-columns:1fr}.donut{margin:auto}.bank-groups{grid-template-columns:1fr}.quick-actions button,.quick-upload{flex:1;justify-content:center;padding:13px 9px}}
-</style><style>.category-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:15px;border:1px solid #e4dac6;border-radius:16px;background:#f8f1e6}.category-steps label{min-width:0}.cat-add{padding:7px 10px;font-size:12px;text-align:left;margin-top:3px}@media(max-width:720px){.category-steps{grid-template-columns:1fr}}</style>
+</style><style>.category-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:15px;border:1px solid #e4dac6;border-radius:16px;background:#f8f1e6}.category-steps label{min-width:0}.cat-add{padding:7px 10px;font-size:12px;text-align:left;margin-top:3px}@media(max-width:720px){.category-steps{grid-template-columns:1fr}}</style><style>.drill-path{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:13px}.drill-path button{padding:6px 9px;font-size:12px}.drill-path span{color:#90836f}.drill-row{display:flex;align-items:center;width:100%;gap:10px;margin:0;padding:12px 4px;background:transparent;color:#3e4931;text-align:left;border-radius:0;border-bottom:1px solid #ede4d4}.drill-row:hover{background:#f7f0e4}.drill-row:disabled{opacity:1;cursor:default}.drill-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}.drill-label{flex:1}.drill-row b{white-space:nowrap}.drill-arrow{font-size:22px;color:#867864}</style>
 </head>
 <body><header><div class="inner"><div class="logo">✳ Мои финансы <small style="font-size:12px;font-weight:400">личный бюджет</small></div><div class="btns"><button class="secondary" onclick="downloadData()">Экспорт данных</button><button onclick="goto('add')">+ Операция</button></div></div><nav id="tabs"><button data-tab="overview" class="active">Обзор</button><button data-tab="month">Бюджет · план/факт</button><button data-tab="planned">Планируемые траты</button><button data-tab="accounts">Банки</button><button data-tab="investments">Инвестиции</button><button data-tab="debts">Кредиты</button><button data-tab="history">История</button><button data-tab="add">Добавить</button><button data-tab="receipt">📷 Чек</button><button data-tab="analytics">Анализ продуктов</button><button data-tab="creditcheck">Новый кредит?</button><button data-tab="incomeplan">Календарь доходов</button><button data-tab="settings">Настройки</button></nav></header>
 <main><section class="panel active" id="overview"><div class="quick-entry card"><div class="kicker">Быстрая запись</div><h1>Что записываем?</h1><div class="quick-actions"><button type="button" id="quickExpense" class="quick-active" onclick="quickMode('expense')">− Расход</button><button type="button" id="quickIncome" onclick="quickMode('income')">+ Доход</button><button type="button" id="quickTransfer" onclick="quickMode('transfer')">⇄ Перевод себе</button></div><form id="quickForm" onsubmit="saveQuick(event)"><label>Сумма, ₽<input type="number" name="amount" inputmode="decimal" min=".01" step=".01" placeholder="0" required></label><label>Банк или счёт<select name="account" id="quickAccount" required></select></label><label id="quickDestinationLabel" class="hidden">На какой счёт<select name="destination" id="quickDestination"></select></label><label>На что / откуда<input name="description" placeholder="Например, продукты или пособие"></label><label>Дата<input name="date" type="date" required></label><div id="quickCategoryBlock" class="full-row category-steps"><label>Большая группа<select name="category" id="quickCategory" onchange="updateQuickCategories()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(1)">+ Добавить группу</button></label><label>Подгруппа<select name="subcategory" id="quickSubcategory" onchange="updateQuickItems()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(2)">+ Добавить подгруппу</button></label><label>Конкретная покупка / третья группа<input name="itemName" id="quickItemName" list="quickItemSuggestions" placeholder="Например, батончик Milky Way или шапка Мире"><datalist id="quickItemSuggestions"></datalist><button type="button" class="secondary cat-add" onclick="addQuickCategory(3)">+ Добавить товар</button></label></div><label id="quickAttachmentLabel" class="full-row quick-attach">📎 Прикрепить чек или документ<input id="quickAttachment" type="file" accept="image/*,application/pdf" onchange="quickAttachmentSelected(this)"><small id="quickAttachmentStatus">Необязательно</small></label><button class="full-row">Сохранить операцию</button></form><small>Для платежа по кредиту откройте <a href="#" onclick="event.preventDefault();goto('add')">расширенную форму</a>.</small></div><h1>Общая картина</h1><p class="muted">Ваши данные хранятся только в этом браузере. Для сохранности используйте экспорт.</p><div class="grid">
@@ -165,7 +165,7 @@ $('debtTotal').textContent=fmt(state.debts.reduce((s,d)=>{let b=debtBalance(d);r
 $('expenseTotal').textContent=fmt(sum(expenses));$('incomeTotal').textContent=fmt(sum(incomes));
 let byCat={};expenses.forEach(o=>{if(Array.isArray(o.items)&&o.items.length){o.items.forEach(x=>{let k=x.category||'Другое';byCat[k]=(byCat[k]||0)+cents(x.price)})}else{let k=o.category||'Другое';byCat[k]=(byCat[k]||0)+cents(o.amount)}});
 let max=Math.max(1,...Object.values(byCat));
-$('cats').innerHTML=Object.keys(byCat).length?Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<div style="margin-bottom:17px">'+row(esc(k),fmt(v/100))+'<div class="bar"><span style="width:'+(v/max*100)+'%"></span></div></div>').join(''):'<p class="muted">Пока нет расходов за выбранный месяц.</p>';
+
 $('latest').innerHTML=state.ops.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6).map(o=>row(esc(o.date+' · '+(o.description||o.category||o.type)),fmt(o.amount))).join('')||'<p class="muted">Операций пока нет.</p>';
 $('accountList').innerHTML=state.accounts.map(a=>row(esc(a.name)+' <small>'+esc(a.kind)+(a.balanceDate?' · остаток на '+esc(a.balanceDate):' · дата остатка не указана')+'</small>',fmt(balance(a)))).join('')||'<p class="muted">Добавьте счета с остатками на выбранную дату.</p>';
 $('debtList').innerHTML=state.debts.map(d=>{let b=debtBalance(d);return '<div style="margin-bottom:14px">'+row(esc(d.name),fmt(b.principal+b.interest))+'<small>Основной долг '+fmt(b.principal)+' · проценты '+fmt(b.interest)+' · ставка '+esc(d.rate)+'%'+(d.bankEndDate?' · конец по графику '+esc(d.bankEndDate):'')+'</small></div>'}).join('')||'<p class="muted">Добавьте кредиты по данным банков.</p>';
@@ -356,15 +356,41 @@ function saveQuick(event){
  state.ops.push(op);$('quickForm').reset();$('quickAttachmentStatus').textContent='Необязательно';save();renderQuickForm();quickMode(currentQuickMode);alert(currentQuickMode==='transfer'?'Перевод записан. Доходы и расходы не изменились.':'Операция сохранена');
 }
 function quickAttachmentSelected(input){const file=input.files?.[0];$('quickAttachmentStatus').textContent=file?'Выбрано: '+file.name:'Необязательно';}
+let expenseDrill=[];
+function setExpenseDrill(level,name){
+ if(level===0)expenseDrill=[];
+ else if(level===1)expenseDrill=[name];
+ else if(level===2)expenseDrill=[expenseDrill[0],name];
+ renderSpendingDonut();
+}
 function renderSpendingDonut(){
- const month=$('monthPicker').value;const facts=budgetFacts(month);
- const pairs=Object.entries(facts).sort((a,b)=>b[1]-a[1]).slice(0,7);
- const total=pairs.reduce((a,b)=>a+b[1],0),colors=['#a75b3d','#647349','#d6a66d','#8c7855','#bc9276','#7d9a78','#d9cdb6'];
+ const month=$('monthPicker').value;const ops=state.ops.filter(o=>o.date?.startsWith(month)&&o.type==='expense');
+ const tree={};
+ function insert(group,sub,item,amount){
+  const g=String(group||'Другое'),p=String(sub||'Без подгруппы'),n=String(item||'Без названия'),v=cents(amount);
+  if(v<=0)return;
+  tree[g]??={};tree[g][p]??={};tree[g][p][n]=(tree[g][p][n]||0)+v;
+ }
+ for(const o of ops){
+  if(Array.isArray(o.items)&&o.items.length){for(const item of o.items)insert(item.category||o.category,item.subcategory||o.subcategory,item.name||item.description||o.description,item.price||item.amount||0)}
+  else insert(o.category,o.subcategory,o.itemName||o.description,o.amount);
+ }
+ let level=expenseDrill.length,entries=[];
+ if(level===0){entries=Object.entries(tree).map(([n,subs])=>[n,Object.values(subs).reduce((a,items)=>a+Object.values(items).reduce((x,y)=>x+y,0),0)]);}
+ if(level===1){const subs=tree[expenseDrill[0]]||{};entries=Object.entries(subs).map(([n,items])=>[n,Object.values(items).reduce((a,b)=>a+b,0)]);}
+ if(level===2){entries=Object.entries(tree[expenseDrill[0]]?.[expenseDrill[1]]||{});}
+ entries.sort((a,b)=>b[1]-a[1]);
+ const total=entries.reduce((a,b)=>a+b[1],0),colors=['#a75b3d','#647349','#d6a66d','#8c7855','#bc9276','#7d9a78','#d9cdb6','#adc2a4'];
  let offset=0,sections=[];
- for(let i=0;i<pairs.length;i++){const pct=total?100*pairs[i][1]/total:0;sections.push(colors[i]+' '+offset.toFixed(3)+'% '+(offset+pct).toFixed(3)+'%');offset+=pct}
+ for(let i=0;i<entries.length;i++){const pct=total?100*entries[i][1]/total:0;sections.push(colors[i%colors.length]+' '+offset.toFixed(3)+'% '+(offset+pct).toFixed(3)+'%');offset+=pct}
  $('expenseDonut').style.background=total?'conic-gradient('+sections.join(',')+')':'#e8decc';
  $('donutText').textContent=fmt(total/100);
+ const crumb='<div class="drill-path"><button class="secondary" onclick="setExpenseDrill(0)">Все расходы</button>'+expenseDrill.map((n,i)=>'<span>›</span><button class="secondary" onclick="setExpenseDrill('+(i+1)+', '+JSON.stringify(n).replace(/"/g,'&quot;')+')">'+esc(n)+'</button>').join('')+'</div>';
+ let html=crumb+(!entries.length?'<p class="muted">Нет расходов на этом уровне за выбранный месяц.</p>':'');
+ html+=entries.map(([n,v],i)=>'<button type="button" class="drill-row" '+(level<2?'onclick="setExpenseDrill('+(level+1)+',this.dataset.name)" data-name="'+esc(n)+'"':'disabled')+'><span class="drill-dot" style="background:'+colors[i%colors.length]+'"></span><span class="drill-label">'+esc(n)+'</span><b>'+fmt(v/100)+'</b>'+(level<2?'<span class="drill-arrow">›</span>':'')+'</button>').join('');
+ $('cats').innerHTML=html;
 }
+
 initQuickCategories();
 const bankRenderPrevious=render;render=function(){bankRenderPrevious();renderBankViews();renderQuickForm();renderSpendingDonut()};
 
