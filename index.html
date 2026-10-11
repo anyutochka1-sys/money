@@ -37,7 +37,9 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  const accounts=[
  {id:'seed-sber-6993',name:'Сбер ••6993',balance:1129.34,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-sber-savings',name:'Сбер · накопительный',balance:12000,balanceDate:'2026-10-11',kind:'Накопительный счёт'},
- {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'}
+ {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'},
+ {id:'seed-ozon',name:'Ozon Банк',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
+ {id:'seed-tbank',name:'Т-Банк',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true}
  ];
  for(const a of accounts)if(!state.accounts.some(x=>x.id===a.id||x.name===a.name))state.accounts.push(a);
  const debts=[
@@ -82,9 +84,9 @@ function render(){
 let now=$('monthPicker').value||new Date().toISOString().slice(0,7);$('monthPicker').value=now;
 let ops=state.ops.filter(o=>o.date.startsWith(now)),expenses=ops.filter(o=>o.type==='expense'),incomes=ops.filter(o=>o.type==='income'),family=ops.filter(o=>o.type==='family'),payments=ops.filter(o=>o.type==='debt');
 let sum=x=>x.reduce((s,o)=>s+cents(o.amount),0)/100;
-$('accountSnapshot').innerHTML=state.accounts.map(a=>row(esc(a.name),fmt(balance(a)))).join('');
-const dated=state.accounts.map(a=>a.balanceDate).filter(Boolean).sort();$('balanceFreshness').textContent=dated.length?'Контрольные остатки: '+dated[0]+' – '+dated[dated.length-1]+'. Учтены последующие внесённые операции; не онлайн-синхронизация.':'Добавьте контрольные остатки счетов.';
-$('investmentTotal').textContent=fmt(state.investmentRub);if(document.activeElement!==$('investmentInput'))$('investmentInput').value=state.investmentRub||'';$('assetTotal').textContent=fmt(state.accounts.reduce((s,a)=>s+cents(balance(a)),0)/100);
+$('accountSnapshot').innerHTML=state.accounts.map(a=>row(esc(a.name),a.needsReconciliation&&!a.balanceDate?'Остаток не указан':fmt(balance(a)))).join('');
+const dated=state.accounts.map(a=>a.balanceDate).filter(Boolean).sort();$('balanceFreshness').textContent=dated.length?'Подтверждённые счета: '+dated[0]+' – '+dated[dated.length-1]+'. Общая сумма без счетов, требующих сверки; не онлайн-синхронизация.':'Добавьте контрольные остатки счетов.';
+$('investmentTotal').textContent=fmt(state.investmentRub);if(document.activeElement!==$('investmentInput'))$('investmentInput').value=state.investmentRub||'';$('assetTotal').textContent=fmt(state.accounts.reduce((s,a)=>s+(a.needsReconciliation&&!a.balanceDate?0:cents(balance(a))),0)/100);
 $('debtTotal').textContent=fmt(state.debts.reduce((s,d)=>{let b=debtBalance(d);return s+cents(b.principal)+cents(b.interest)},0)/100);
 $('expenseTotal').textContent=fmt(sum(expenses));$('incomeTotal').textContent=fmt(sum(incomes));
 let byCat={};expenses.forEach(o=>{if(Array.isArray(o.items)&&o.items.length){o.items.forEach(x=>{let k=x.category||'Другое';byCat[k]=(byCat[k]||0)+cents(x.price)})}else{let k=o.category||'Другое';byCat[k]=(byCat[k]||0)+cents(o.amount)}});
