@@ -705,7 +705,7 @@ const bankRenderPrevious=render;render=function(){bankRenderPrevious();renderBan
 function correctConfirmedOctoberExpenses(){
  let changed=false;
  for(const o of state.ops){
-  if(o.date!=='2026-10-09')continue;
+  if(o.date!=='2026-10-09'||o.userReviewed||o.duplicateExcluded)continue;
   const description=String(o.description||'').toLowerCase();
   const gift=Math.abs(o.amount-5400)<0.005&&/выдача наличных|банкомат/.test(description);
   const phone=Math.abs(o.amount-500)<0.005&&/мтс|mts/.test(description);
