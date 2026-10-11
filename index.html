@@ -795,7 +795,7 @@ async function loadArchivedOperations(){
  }
  if(added)localStorage.setItem(KEY,JSON.stringify(state));
  if(info)info.textContent='Архив: '+(body.operations||[]).length+' операций в исходной подборке. Спорные переводы не включаются в расходы.';
- correctConfirmedOctoberExpenses();const paired=reconcileOwnTransfers();if(added||paired){render();renderHistory();}
+ correctConfirmedOctoberExpenses();const categorized=categorizeClearMarketplaceExpenses();const paired=reconcileOwnTransfers();if(added||paired||categorized){render();renderHistory();}
  }catch(e){if(info)info.textContent='Архив временно недоступен: '+e.message}
 }
 loadArchivedOperations();
@@ -812,7 +812,7 @@ async function importRecentArchive(path='./data/statement-sep-oct-2026.gz.b64',p
  let date='2026-'+x[0].slice(0,2)+'-'+x[0].slice(2),type=types[x[3]],accountName=p.accounts[x[2]],account=map[accountName]||'',amount=x[1]/100;
  if(type==='expense'&&state.ops.some(o=>o.id?.startsWith('seed-')&&o.type==='expense'&&o.date===date&&o.account===account&&Math.abs(o.amount-amount)<.005))return;
  state.ops.push({id,date,type,account,accountName,amount,category:p.categories[x[4]],description:x[5],imported:true,transferDirection:type==='transfer'?(/^\s*(?:перевод|пополнение|зачисление)\s*\+/i.test(x[5])?1:/^\s*(?:перевод|списание)\s*[-−]/i.test(x[5])?-1:null):null,needsReview:type==='unverified'||type==='transfer',sourceFile:'Сверка 2026'});added++});
- if(added)localStorage.setItem(KEY,JSON.stringify(state));correctConfirmedOctoberExpenses();const paired=reconcileOwnTransfers();if(added||paired){render();renderHistory()}
+ if(added)localStorage.setItem(KEY,JSON.stringify(state));correctConfirmedOctoberExpenses();const paired=reconcileOwnTransfers();if(added||paired||categorized){render();renderHistory()}
  $(statusId).textContent+=(prefix==='archive-so-'?' Сентябрь–октябрь: ':' Дополнительный архив: ')+p.operations.length+' строк, добавлено '+added+'; переводы отделены от расходов.';
  }catch(e){$(statusId).textContent+=' Ошибка архива: '+e.message}
 }
@@ -829,36 +829,28 @@ async function loadOzonDetails(){
  }catch(e){$('ozonItemStatus').textContent='Не удалось открыть список покупок Ozon: '+e.message}
 }
 function classifyMarketplace(items,bank){
- const used=new Set(),linked=[];
- const eligible=items.filter(x=>x.status!=='in_transit_unpaid');
- const candidatesFor=item=>{
-  let delivery=item.received||item.date;
-  let end=new Date(delivery+'T12:00:00'),start=new Date(end);
-  start.setDate(start.getDate()-32);
-  let lower=start.toLocaleDateString('sv-SE');
-  return state.ops.filter(o=>o.type==='expense'&&!o.userReviewed&&!o.confirmedByUser&&!o.duplicateExcluded&&
-   (o.account===(bank==='ozon'?'seed-ozon':'seed-wb')||
-    new RegExp(bank==='ozon'?'ozon|озон':'wildberries|wb|вб','i').test(o.description||''))&&
-   Math.abs(o.amount-item.amount)<0.005&&o.date>=lower&&o.date<=delivery);
- };
- const matches=eligible.map(item=>({item,ops:candidatesFor(item)}));
- for(const m of matches){
-  if(m.ops.length!==1)continue;
-  const op=m.ops[0];
-  if(matches.filter(x=>x.ops.some(o=>o.id===op.id)).length!==1||used.has(op.id))continue;
-  used.add(op.id);linked.push({item:m.item,op});
+ // Не привязываем товар к списанию по приблизительной дате или совпадению суммы.
+ // Скриншоты остаются справочником, пока операция не подтверждена.
+ return {linked:0,review:items.filter(x=>x.status!=='in_transit_unpaid').length,excluded:items.filter(x=>x.status==='in_transit_unpaid').length};
+}
+function categorizeClearMarketplaceExpenses(){
+ let changed=false;
+ for(const o of state.ops){
+  if(o.type!=='expense'||o.userReviewed||o.confirmedByUser||o.duplicateExcluded||o.marketplaceClassified||o.ozonClassified)continue;
+  const desc=String(o.description||'');
+  const vendor=/wildberries|вайлдберриз|вб\s*(?:покупк|оплат)|wb\s*(?:pay|market|purchase)|ozon|озон/i.test(desc);
+  if(!vendor)continue;
+  if(o.category!=='Маркетплейсы'||o.subcategory!=='Покупки без детализации'){
+   o.category='Маркетплейсы';o.subcategory='Покупки без детализации';o.itemName='';
+   changed=true;
+  }
  }
- for(const {item,op} of linked){
-  if(op.userReviewed||op.confirmedByUser||op.duplicateExcluded)continue;
-  op.category=item.group;op.subcategory=item.subgroup;op.itemName=item.item;
-  op.marketplaceClassified=bank;
- }
- if(linked.length){localStorage.setItem(KEY,JSON.stringify(state));render();}
- return {linked:linked.length,review:eligible.length-linked.length,excluded:items.length-eligible.length};
+ if(changed)localStorage.setItem(KEY,JSON.stringify(state));
+ return changed;
 }
 function applyOzonDetails(){
  const tally=classifyMarketplace(ozonDetails,'ozon');
- $('ozonItemStatus').textContent='По скриншотам '+ozonDetails.length+' товаров. Привязано к банковским расходам: '+tally.linked+'. Остальные '+tally.review+' требуют сверки по дате оплаты и сумме. Новые списания не создаются.';
+ $('ozonItemStatus').textContent='По скриншотам '+ozonDetails.length+' товаров. Товары не привязываются к банковским списаниям по догадке. Неопознанные расходы отображаются как «Маркетплейсы». Новые списания не создаются.';
  $('ozonItemList').innerHTML='<div class="ozon-catalog">'+ozonDetails.map(item=>'<div class="ozon-line"><div><b>'+esc(item.item)+'</b><small>'+esc(item.group)+' → '+esc(item.subgroup)+' · получено '+esc(item.received)+'</small></div><strong>'+fmt(item.amount)+'</strong></div>').join('')+'</div>';
  renderSpendingDonut();
 }
