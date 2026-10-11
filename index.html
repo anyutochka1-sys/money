@@ -740,6 +740,26 @@ function correctConfirmedOctoberExpenses(){
  if(changed){localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory()}
 }
 
+function reconcileOwnTransfers(){
+ const ops=state.ops.filter(o=>o.imported&&o.type==='transfer'&&!o.userReviewed&&!o.confirmedByUser&&o.account&&o.transferDirection);
+ let matched=0,changed=false;
+ const day=date=>Date.parse(date+'T12:00:00');
+ for(const o of ops){
+  if(o.autoTransferPaired)continue;
+  const candidates=ops.filter(p=>p!==o&&!p.autoTransferPaired&&p.account!==o.account&&p.transferDirection===-o.transferDirection&&cents(p.amount)===cents(o.amount)&&Math.abs(day(p.date)-day(o.date))<=86400000);
+  if(candidates.length!==1)continue;
+  const p=candidates[0];
+  const reverse=ops.filter(x=>x!==p&&!x.autoTransferPaired&&x.account!==p.account&&x.transferDirection===-p.transferDirection&&cents(x.amount)===cents(p.amount)&&Math.abs(day(x.date)-day(p.date))<=86400000);
+  if(reverse.length!==1||reverse[0]!==o)continue;
+  o.autoTransferPaired=p.id;p.autoTransferPaired=o.id;
+  o.needsReview=false;p.needsReview=false;
+  o.destination=o.transferDirection<0?p.account:o.account;
+  p.destination=p.transferDirection<0?o.account:p.account;
+  matched++;changed=true;
+ }
+ if(changed)localStorage.setItem(KEY,JSON.stringify(state));
+ return matched;
+}
 async function loadArchivedOperations(){
  const info=document.getElementById('archiveStatus');
  try{
@@ -762,12 +782,12 @@ async function loadArchivedOperations(){
  else if(x.signed<0&&x.budgetExpense>0)type='expense';
  else if(x.signed>0&&x.budgetIncome>0&&!/требует проверки/i.test(category))type='income';
  const map={'Сбер 6993':'seed-sber-6993','Сбер 1814':'seed-sber-1814','Накопительный':'seed-sber-savings','Ozon основной':'seed-ozon','Ozon дополнительный':'seed-ozon-savings','Т-Банк 5733':'seed-tbank'};
- state.ops.push({id:x.id,date:x.date,type,amount:Math.abs(x.signed),account:map[x.accountName]||'',category,description:desc,imported:true,sourceFile:x.sourceFile,needsReview:type==='unverified'||x.review==='Да'});
+ state.ops.push({id:x.id,date:x.date,type,amount:Math.abs(x.signed),account:map[x.accountName]||'',category,description:desc,imported:true,sourceFile:x.sourceFile,transferDirection:type==='transfer'?(x.signed<0?-1:1):null,needsReview:type==='unverified'||x.review==='Да'});
  ids.add(x.id);added++;
  }
  if(added)localStorage.setItem(KEY,JSON.stringify(state));
  if(info)info.textContent='Архив: '+(body.operations||[]).length+' операций в исходной подборке. Спорные переводы не включаются в расходы.';
- correctConfirmedOctoberExpenses();if(added){render();renderHistory();}
+ correctConfirmedOctoberExpenses();reconcileOwnTransfers();if(added){render();renderHistory();}
  }catch(e){if(info)info.textContent='Архив временно недоступен: '+e.message}
 }
 loadArchivedOperations();
@@ -783,8 +803,8 @@ async function importRecentArchive(path='./data/statement-sep-oct-2026.gz.b64',p
  p.operations.forEach((x,i)=>{let id=prefix+i;if(existing.has(id))return;
  let date='2026-'+x[0].slice(0,2)+'-'+x[0].slice(2),type=types[x[3]],accountName=p.accounts[x[2]],account=map[accountName]||'',amount=x[1]/100;
  if(type==='expense'&&state.ops.some(o=>o.id?.startsWith('seed-')&&o.type==='expense'&&o.date===date&&o.account===account&&Math.abs(o.amount-amount)<.005))return;
- state.ops.push({id,date,type,account,accountName,amount,category:p.categories[x[4]],description:x[5],imported:true,needsReview:type==='unverified'||type==='transfer',sourceFile:'Сверка 2026'});added++});
- if(added)localStorage.setItem(KEY,JSON.stringify(state));correctConfirmedOctoberExpenses();if(added){render();renderHistory()}
+ state.ops.push({id,date,type,account,accountName,amount,category:p.categories[x[4]],description:x[5],imported:true,transferDirection:type==='transfer'?(/^\s*(?:перевод|пополнение|зачисление)\s*\+/i.test(x[5])?1:/^\s*(?:перевод|списание)\s*[-−]/i.test(x[5])?-1:null):null,needsReview:type==='unverified'||type==='transfer',sourceFile:'Сверка 2026'});added++});
+ if(added)localStorage.setItem(KEY,JSON.stringify(state));correctConfirmedOctoberExpenses();reconcileOwnTransfers();if(added){render();renderHistory()}
  $(statusId).textContent+=(prefix==='archive-so-'?' Сентябрь–октябрь: ':' Дополнительный архив: ')+p.operations.length+' строк, добавлено '+added+'; переводы отделены от расходов.';
  }catch(e){$(statusId).textContent+=' Ошибка архива: '+e.message}
 }
