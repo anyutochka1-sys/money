@@ -36,6 +36,8 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
 (function initializeKnownData(){
  const accounts=[
  {id:'seed-sber-6993',name:'Сбер ••6993',balance:1129.34,balanceDate:'2026-10-11',kind:'Карта'},
+ {id:'seed-sber-card2',name:'Сбер · карта 2 (уточнить)',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
+ {id:'seed-sber-card3',name:'Сбер · карта 3 (уточнить)',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
  {id:'seed-sber-savings',name:'Сбер · накопительный',balance:12000,balanceDate:'2026-10-11',kind:'Накопительный счёт'},
  {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-ozon',name:'Ozon Банк',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
