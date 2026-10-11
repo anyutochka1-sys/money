@@ -225,7 +225,7 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  {name:'Рассрочка на обучение',balanceDate:'2026-10-11',principal:19902.32,interest:4.49,rate:8.24,required:1884.66,planned:3000,bankEndDate:'2027-09-10'},
  {name:'Кредитная СберКарта ••8611',balanceDate:'2026-10-11',principal:4998.70,interest:0,rate:38.8,required:0,planned:0,bankEndDate:''}
  ];
- for(const d of debts)if(!state.debts.some(x=>x.name===d.name))state.debts.push(d);
+ for(const d of debts){const current=state.debts.find(x=>x.name===d.name);if(!current){state.debts.push(d)}else if(!current.balanceDate&&cents(current.principal)===cents(d.principal)&&cents(current.interest)===cents(d.interest)){current.balanceDate=d.balanceDate}}
  const ops=[
  {id:'seed-yarche-1010',date:'2026-10-10',type:'expense',account:'seed-sber-6993',amount:4990.92,category:'Продукты / готовка',description:'Ярче · продукты (чек уже учтён в выписке)'},
  {id:'seed-lenta-1010',date:'2026-10-10',type:'expense',account:'seed-sber-6993',amount:498.95,category:'Продукты / готовка',description:'Лента · товары из чека',items:[{name:'Листовой салат',price:27.65,category:'Продукты / готовка'},{name:'Яйца Белоречье, 10 шт.',price:92.14,category:'Продукты / готовка'},{name:'Творог Савушкин Нежный, 10 шт.',price:318.92,category:'Продукты / готовка'},{name:'Лаваш, 300 г',price:60.24,category:'Продукты / готовка'}]},
@@ -617,7 +617,7 @@ let reviewVisible=20;
 function showMoreReview(){reviewVisible+=20;reviewQueue()}
 function reviewQueue(){
  const el=$('reconciliationQueue');if(!el)return;
- const allPending=reportOps().filter(o=>o.type==='unverified'||o.needsReview||o.type==='expense'&&o.imported&&!o.confirmedByUser&&!o.marketplaceClassified&&!o.ozonClassified);
+ const allPending=reportOps().filter(o=>!o.autoTransferPaired&&(o.type==='unverified'||o.needsReview||o.type==='expense'&&o.imported&&!o.confirmedByUser&&!o.marketplaceClassified&&!o.ozonClassified));
  const list=allPending.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,reviewVisible);
  $('pendingCount').textContent='('+allPending.length+' всего, показано '+list.length+')';
  $('moreReviewButton').style.display=allPending.length>list.length?'inline-flex':'none';
