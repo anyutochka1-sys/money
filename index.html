@@ -220,10 +220,10 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  const sber6993=state.accounts.find(a=>a.id==='seed-sber-6993');if(sber6993&&(!sber6993.balanceDate||sber6993.balanceDate<='2026-10-11')&&sber6993.balance===1129.34){sber6993.balance=829.34;sber6993.balanceDate='2026-10-11'}
 
  const debts=[
- {name:'Ипотека Сбер',principal:493575.17,interest:1501.01,rate:18.5,required:8299.50,planned:15000,bankEndDate:'2040-05-03'},
- {name:'Потребительский кредит Сбер',principal:100591.89,interest:470.71,rate:24.4,required:3062.90,planned:15000,bankEndDate:'2031-04-26'},
- {name:'Рассрочка на обучение',principal:19902.32,interest:4.49,rate:8.24,required:1884.66,planned:3000,bankEndDate:'2027-09-10'},
- {name:'Кредитная СберКарта ••8611',principal:4998.70,interest:0,rate:38.8,required:0,planned:0,bankEndDate:''}
+ {name:'Ипотека Сбер',balanceDate:'2026-10-11',principal:493575.17,interest:1501.01,rate:18.5,required:8299.50,planned:15000,bankEndDate:'2040-05-03'},
+ {name:'Потребительский кредит Сбер',balanceDate:'2026-10-11',principal:100591.89,interest:470.71,rate:24.4,required:3062.90,planned:15000,bankEndDate:'2031-04-26'},
+ {name:'Рассрочка на обучение',balanceDate:'2026-10-11',principal:19902.32,interest:4.49,rate:8.24,required:1884.66,planned:3000,bankEndDate:'2027-09-10'},
+ {name:'Кредитная СберКарта ••8611',balanceDate:'2026-10-11',principal:4998.70,interest:0,rate:38.8,required:0,planned:0,bankEndDate:''}
  ];
  for(const d of debts)if(!state.debts.some(x=>x.name===d.name))state.debts.push(d);
  const ops=[
@@ -258,7 +258,7 @@ function saveBenefit(){const n=Number($('benefitInput').value);if(!Number.isFini
 function saveInvestments(){const n=Number($('investmentInput').value);if(!Number.isFinite(n)||n<0){alert('Укажите сумму не меньше нуля');return;}state.investmentRub=n;save();}
 function goto(tab){document.querySelectorAll('section.panel').forEach(s=>s.classList.toggle('active',s.id===tab));document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='add'){$('opForm').elements.date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>goto(b.dataset.tab));
-function debtBalance(d){let p=cents(d.principal),i=cents(d.interest);for(const o of state.ops){if(o.type==='debt'&&o.loan===d.name&&!o.imported){p-=cents(o.principalPaid);i-=cents(o.interestPaid)}}return {principal:Math.max(0,p)/100,interest:Math.max(0,i)/100}}function balance(a){let base=cents(a.balance);for(const o of state.ops){if(o.imported||(a.balanceDate&&o.date<=a.balanceDate))continue;const v=cents(o.amount);if(o.type==='transfer'){if(o.account===a.id)base-=v;if(o.destination===a.id)base+=v;}else if(o.account===a.id){if(o.type==='income'||o.type==='family'||o.type==='refund')base+=v;else if(o.type==='expense'||o.type==='debt')base-=v;/* Неуточнённые и исключённые записи не меняют доступный остаток. */}}return base/100}
+function debtBalance(d){let p=cents(d.principal),i=cents(d.interest);for(const o of state.ops){if(o.type==='debt'&&o.loan===d.name&&!o.imported&&(!d.balanceDate||o.date>d.balanceDate)){p-=cents(o.principalPaid);i-=cents(o.interestPaid)}}return {principal:Math.max(0,p)/100,interest:Math.max(0,i)/100}}function balance(a){let base=cents(a.balance);for(const o of state.ops){if(o.imported||(a.balanceDate&&o.date<=a.balanceDate))continue;const v=cents(o.amount);if(o.type==='transfer'){if(o.account===a.id)base-=v;if(o.destination===a.id)base+=v;}else if(o.account===a.id){if(o.type==='income'||o.type==='family'||o.type==='refund')base+=v;else if(o.type==='expense'||o.type==='debt')base-=v;/* Неуточнённые и исключённые записи не меняют доступный остаток. */}}return base/100}
 function isSavingsAccount(a){return /накоп|сбереж|вклад|резерв/i.test(String(a.kind||'')+' '+String(a.name||''))}
 function isVerifiedAccount(a){return !a.needsReconciliation||!!a.balanceDate}
 function availableBalanceRub(accounts){return accounts.filter(a=>isVerifiedAccount(a)&&!isSavingsAccount(a)).reduce((v,a)=>v+cents(balance(a)),0)/100}
@@ -716,11 +716,11 @@ function renderDebtPaymentComparison(){
   const target=isConsumer&&month==='2026-10'?10000:isInstallment&&month==='2026-10'?3000:Number(d.planned)||0;
   const all=state.ops.filter(o=>o.date?.startsWith(month)&&(o.type==='debt'&&!o.imported||o.type==='archivedDebtLinked')&&o.loan===name);
   let confirmed=all.reduce((n,o)=>n+cents(o.amount),0)/100;
-  let source=all.length?'Внесено в учёт или привязано из выписки; разбивка на долг и проценты учитывается только если указана':'Не сверено с конкретным кредитом';
+  let source=all.length?'Внесено вручную или привязано из выписки. Уменьшение основного долга подтверждается банковским остатком.':'Не найден привязанный платёж в этом месяце';
   if(isCard&&month==='2026-10'&&!all.length){source='Перевод 4 000 ₽ на кредитную карту отмечен отдельно; это ещё не подтверждение погашения долга.'}
-  const factText=all.length?fmt(confirmed):'Не подтверждено';
+  const factText=all.length?fmt(confirmed):'Не найдено';
   const required=Number(d.required)||0;
-  return '<div class="debt-compare-row"><strong>'+esc(name)+'</strong><div class="debt-compare-grid"><div><small>По графику банка</small><b>'+(isCard?'Уточнить':fmt(required))+'</b></div><div><small>Ваш план</small><b>'+(target?fmt(target):'Не задан')+'</b></div><div><small>Факт оплаты</small><b>'+factText+'</b></div></div><small>'+esc(source)+'</small></div>';
+  return '<div class="debt-compare-row"><strong>'+esc(name)+'</strong><div class="debt-compare-grid"><div><small>По графику банка</small><b>'+(isCard?'Уточнить':fmt(required))+'</b></div><div><small>Ваш план</small><b>'+(target?fmt(target):'Не задан')+'</b></div><div><small>Учтено в операциях</small><b>'+factText+'</b></div></div><small>'+esc(source)+'</small></div>';
  });
  el.innerHTML=rows.join('')+'<p class="muted">Суммы обязательных платежей взяты из последней известной сверки. Без банковских графиков на конкретные даты их нельзя считать окончательными.</p>';
 }
