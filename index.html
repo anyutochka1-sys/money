@@ -511,17 +511,17 @@ function reviewOperation(id,kind){
   const group=prompt('Большая категория расхода',op.category==='Требует проверки'?'Другое':op.category||'Другое');if(group===null)return;
   const sub=prompt('Подкатегория (необязательно)',op.subcategory||'');if(sub===null)return;
   const item=prompt('Что куплено (необязательно)',op.itemName||op.description||'');if(item===null)return;
-  op.type='expense';op.category=group.trim()||'Другое';op.subcategory=sub.trim();op.itemName=item.trim();op.needsReview=false;op.confirmedByUser=true;
+  op.type='expense';op.duplicateExcluded=false;op.category=group.trim()||'Другое';op.subcategory=sub.trim();op.itemName=item.trim();op.needsReview=false;op.confirmedByUser=true;
  }else if(kind==='income'){
   if(!confirm('Подтвердить как доход?'))return;
-  op.type='income';op.category='Поступления';op.needsReview=false;op.confirmedByUser=true;
+  op.type='income';op.duplicateExcluded=false;op.category='Поступления';op.needsReview=false;op.confirmedByUser=true;
  }else if(kind==='transfer'){
   const options=state.accounts.filter(a=>a.id!==op.account);
   const reply=prompt('Перевод между своими счетами. Укажите номер счёта-получателя из списка:\n'+options.map((a,i)=>(i+1)+'. '+a.name).join('\n'),'');
   if(reply===null)return;
   const to=options[Number(reply)-1];
   if(!to){alert('Нужно выбрать конкретный счёт-получатель. Перевод не изменён.');return}
-  op.type='transfer';op.destination=to.id;op.needsReview=false;op.confirmedByUser=true;op.category='Между своими счетами';
+  op.type='transfer';op.duplicateExcluded=false;op.destination=to.id;op.needsReview=false;op.confirmedByUser=true;op.category='Между своими счетами';
  }else if(kind==='unverified'){
   op.type='unverified';op.needsReview=true;op.confirmedByUser=false;
  }
@@ -560,6 +560,7 @@ function renderReconciliationSummary(){
  const expenses=reportOps().filter(o=>o.type==='expense');
  const income=reportOps().filter(o=>o.type==='income'||o.type==='family');
  const pending=reportOps().filter(o=>o.type==='unverified'||o.needsReview);
+ const excluded=reportOps().filter(o=>o.duplicateExcluded);
  const sum=arr=>arr.reduce((n,o)=>n+cents(o.amount),0)/100;
  const verified=expenses.filter(o=>!o.imported||o.confirmedByUser||o.marketplaceClassified||o.ozonClassified);
  const preliminary=expenses.filter(o=>o.imported&&!o.confirmedByUser&&!o.marketplaceClassified&&!o.ozonClassified);
@@ -578,7 +579,7 @@ function renderReconciliationSummary(){
  '<div><small>Расходы по выпискам, предварительно</small><strong>'+fmt(sum(expenses))+'</strong></div>'+
  '<div><small>Из них расшифровано или внесено вручную</small><strong>'+fmt(sum(verified))+'</strong></div>'+
  '<div><small>Требует проверки в расходах</small><strong>'+fmt(sum(preliminary))+'</strong></div>'+
- '</div><p class="muted">В итог уже входят операции из архива. Сомнительные переводы исключены, но оставшиеся расходы могут требовать сверки. Отдельно не прибавляйте покупки из каталогов Ozon и WB. Поступления за период: '+fmt(sum(income))+'. Операций с пометкой проверки: '+pending.length+'.</p>';
+ '</div><p class="muted">В итог уже входят операции из архива. Сомнительные переводы исключены, но оставшиеся расходы могут требовать сверки. Отдельно не прибавляйте покупки из каталогов Ozon и WB. Поступления за период: '+fmt(sum(income))+'. Операций с пометкой проверки: '+pending.length+'. Из них исключённых как возможные дубли: '+excluded.length+'.</p>';
 }
 function renderPeriodSummary(){const [a,b]=reportRange(),ops=reportOps();let sum=types=>ops.filter(o=>types.includes(o.type)).reduce((n,o)=>n+cents(o.amount),0)/100;$('expenseTotal').textContent=fmt(sum(['expense']));$('incomeTotal').textContent=fmt(sum(['income','family']));$('periodText').textContent='С '+a+' по '+b;document.querySelectorAll('.period-controls button').forEach((x,i)=>x.classList.toggle('selected',['day','week','month','quarter','half','year'][i]===reportPeriod))}
 $('periodDate').value=new Date().toLocaleDateString('sv-SE');
