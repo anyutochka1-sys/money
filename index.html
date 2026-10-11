@@ -600,10 +600,22 @@ function unlinkArchivedDebt(id){
  op.type='archivedDebt';delete op.loan;op.loanLinked=false;op.needsReview=true;
  localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
 }
+function changeLinkedDebt(id){
+ const op=state.ops.find(o=>o.id===id&&o.type==='archivedDebtLinked');if(!op)return;
+ const opts=state.debts.map((d,i)=>(i+1)+'. '+d.name).join('\n');
+ const reply=prompt('Выберите правильный кредит для платежа '+fmt(op.amount)+'\n'+opts,String(state.debts.findIndex(d=>d.name===op.loan)+1));
+ if(reply===null)return;
+ const d=state.debts[Number(reply)-1];
+ if(!d){alert('Укажите номер кредита из списка');return}
+ if(d.name===op.loan)return;
+ if(!confirm('Перенести запись из «'+op.loan+'» в «'+d.name+'»?'))return;
+ op.loan=d.name;
+ localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory();
+}
 function renderLinkedDebtPayments(month){
  const el=$('linkedDebtPayments');if(!el)return;
  const entries=state.ops.filter(o=>o.date?.startsWith(month)&&o.type==='archivedDebtLinked');
- el.innerHTML=entries.length?entries.map(o=>'<div class="archive-payment"><span>'+esc(o.date)+' · '+esc(o.loan||'Кредит')+' · '+esc(o.description||'Из выписки')+'</span><strong>'+fmt(o.amount)+'</strong><button type="button" class="secondary" onclick="unlinkArchivedDebt('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">Отменить привязку</button></div>').join(''):'<p class="muted">За этот месяц пока нет платежей, привязанных из выписок.</p>';
+ el.innerHTML=entries.length?entries.map(o=>'<div class="archive-payment"><span>'+esc(o.date)+' · '+esc(o.loan||'Кредит')+' · '+esc(o.description||'Из выписки')+'</span><strong>'+fmt(o.amount)+'</strong><button type="button" class="secondary" onclick="unlinkArchivedDebt('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">Отменить привязку</button><button type="button" class="secondary" onclick="changeLinkedDebt('+JSON.stringify(o.id).replace(/"/g,'&quot;')+')">Изменить кредит</button></div>').join(''):'<p class="muted">За этот месяц пока нет платежей, привязанных из выписок.</p>';
 }
 function renderUnmatchedDebtPayments(month){
  const el=$('unmatchedDebtPayments');if(!el)return;
