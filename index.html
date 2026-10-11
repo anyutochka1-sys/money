@@ -507,6 +507,19 @@ function renderPeriodSummary(){const [a,b]=reportRange(),ops=reportOps();let sum
 $('periodDate').value=new Date().toLocaleDateString('sv-SE');
 const bankRenderPrevious=render;render=function(){bankRenderPrevious();renderBankViews();renderQuickForm();renderPeriodSummary();renderSpendingDonut()};
 
+function correctConfirmedOctoberExpenses(){
+ let changed=false;
+ for(const o of state.ops){
+  if(o.date!=='2026-10-09')continue;
+  const description=String(o.description||'').toLowerCase();
+  const gift=Math.abs(o.amount-5400)<0.005&&/выдача наличных|банкомат/.test(description);
+  const phone=Math.abs(o.amount-500)<0.005&&/мтс|mts/.test(description);
+  if(gift){o.type='expense';o.category='Подарки';o.subcategory='Мужу · день рождения';o.itemName='Наушники Marshall Major V';o.description='Подарок мужу на день рождения · наушники Major 5 (снятие наличных)';o.needsReview=false;o.confirmedByUser=true;changed=true}
+  if(phone){o.type='expense';o.category='Подписки и связь';o.subcategory='Мобильная связь';o.itemName='Оплата телефона МТС';o.description='МТС · оплата мобильной связи';o.needsReview=false;o.confirmedByUser=true;changed=true}
+ }
+ if(changed){localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory()}
+}
+
 async function loadArchivedOperations(){
  const info=document.getElementById('archiveStatus');
  try{
@@ -532,7 +545,7 @@ async function loadArchivedOperations(){
  }
  if(added)localStorage.setItem(KEY,JSON.stringify(state));
  if(info)info.textContent='Архив: '+(body.operations||[]).length+' операций в исходной подборке. Спорные переводы не включаются в расходы.';
- if(added){render();renderHistory();}
+ correctConfirmedOctoberExpenses();if(added){render();renderHistory();}
  }catch(e){if(info)info.textContent='Архив временно недоступен: '+e.message}
 }
 loadArchivedOperations();
@@ -549,7 +562,7 @@ async function importRecentArchive(path='./data/statement-sep-oct-2026.gz.b64',p
  let date='2026-'+x[0].slice(0,2)+'-'+x[0].slice(2),type=types[x[3]],accountName=p.accounts[x[2]],account=map[accountName]||'',amount=x[1]/100;
  if(type==='expense'&&state.ops.some(o=>o.id?.startsWith('seed-')&&o.type==='expense'&&o.date===date&&o.account===account&&Math.abs(o.amount-amount)<.005))return;
  state.ops.push({id,date,type,account,accountName,amount,category:p.categories[x[4]],description:x[5],imported:true,needsReview:type==='unverified'||type==='transfer',sourceFile:'Сверка 2026'});added++});
- if(added){localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory()}
+ if(added)localStorage.setItem(KEY,JSON.stringify(state));correctConfirmedOctoberExpenses();if(added){render();renderHistory()}
  $(statusId).textContent+=(prefix==='archive-so-'?' Сентябрь–октябрь: ':' Дополнительный архив: ')+p.operations.length+' строк, добавлено '+added+'; переводы отделены от расходов.';
  }catch(e){$(statusId).textContent+=' Ошибка архива: '+e.message}
 }
@@ -614,5 +627,5 @@ async function loadWbDetails(){
 loadWbDetails();
 
 
-render();
+correctConfirmedOctoberExpenses();render();
 </script></body></html>
