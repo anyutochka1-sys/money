@@ -709,8 +709,8 @@ function correctConfirmedOctoberExpenses(){
   const description=String(o.description||'').toLowerCase();
   const gift=Math.abs(o.amount-5400)<0.005&&/выдача наличных|банкомат/.test(description);
   const phone=Math.abs(o.amount-500)<0.005&&/мтс|mts/.test(description);
-  if(gift){o.type='expense';o.category='Подарки';o.subcategory='Мужу · день рождения';o.itemName='Наушники Marshall Major V';o.description='Подарок мужу на день рождения · наушники Major 5 (снятие наличных)';o.needsReview=false;o.confirmedByUser=true;changed=true}
-  if(phone){o.type='expense';o.category='Подписки и связь';o.subcategory='Мобильная связь';o.itemName='Оплата телефона МТС';o.description='МТС · оплата мобильной связи';o.needsReview=false;o.confirmedByUser=true;changed=true}
+  if(gift&&!o.confirmedByUser){o.type='expense';o.category='Подарки';o.subcategory='Мужу · день рождения';o.itemName='Наушники Marshall Major V';o.description='Подарок мужу на день рождения · наушники Major 5 (снятие наличных)';o.needsReview=false;o.confirmedByUser=true;changed=true}
+  if(phone&&!o.confirmedByUser){o.type='expense';o.category='Подписки и связь';o.subcategory='Мобильная связь';o.itemName='Оплата телефона МТС';o.description='МТС · оплата мобильной связи';o.needsReview=false;o.confirmedByUser=true;changed=true}
  }
  if(changed){localStorage.setItem(KEY,JSON.stringify(state));render();renderHistory()}
 }
@@ -796,6 +796,7 @@ function classifyMarketplace(items,bank){
   used.add(op.id);linked.push({item:m.item,op});
  }
  for(const {item,op} of linked){
+  if(op.userReviewed||op.duplicateExcluded)continue;
   op.category=item.group;op.subcategory=item.subgroup;op.itemName=item.item;
   op.marketplaceClassified=bank;
  }
@@ -818,7 +819,7 @@ async function loadWbDetails(){
  $('wbItemStatus').textContent=items.length+' товаров распознано по скриншотам. '+paid.length+' оплаченных или полученных, '+(items.length-paid.length)+' неоплаченных. Суммы здесь справочные и не прибавляются к банковским расходам.';
  $('wbItemList').innerHTML='<div class="ozon-catalog">'+items.map(x=>'<div class="ozon-line"><div><b>'+esc(x.item)+'</b><small>'+esc(x.group)+' → '+esc(x.subgroup)+' · '+(x.status==='in_transit_unpaid'?'В пути, не оплачен':x.status==='in_transit_paid'?'Оплачен, в пути':'Получен')+'</small></div><strong>'+fmt(x.amount)+'</strong></div>').join('')+'</div>';
  const tally=classifyMarketplace(items,'wb');$('wbItemStatus').textContent=items.length+' товаров: '+tally.linked+' привязано к расходам, '+tally.review+' ждут сверки, '+tally.excluded+' неоплаченных. Повторные списания не создаются.';
- const belt=state.ops.find(o=>o.id==='seed-wb-belt-1011');if(belt&&belt.type==='expense'){belt.category='Одежда';belt.subcategory='Аксессуары';belt.itemName='Широкий пояс-ремень';localStorage.setItem(KEY,JSON.stringify(state));render();}
+ const belt=state.ops.find(o=>o.id==='seed-wb-belt-1011');if(belt&&belt.type==='expense'&&!belt.userReviewed&&!belt.duplicateExcluded){belt.category='Одежда';belt.subcategory='Аксессуары';belt.itemName='Широкий пояс-ремень';localStorage.setItem(KEY,JSON.stringify(state));render();}
  }catch(e){$('wbItemStatus').textContent='Не удалось загрузить покупки WB: '+e.message}
 }
 loadWbDetails();
