@@ -206,7 +206,9 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-ozon',name:'Ozon Банк · основной счёт',balance:987.01,balanceDate:'2026-10-10',kind:'Счёт'},
  {id:'seed-ozon-savings',name:'Ozon Банк · накопительный',balance:1000,balanceDate:'2026-10-10',kind:'Накопительный счёт'},
- {id:'seed-tbank',name:'Т-Банк ••5733',balance:0,balanceDate:'2026-10-11',kind:'Карта'}
+ {id:'seed-tbank',name:'Т-Банк ••5733',balance:0,balanceDate:'2026-10-11',kind:'Карта'},
+ {id:'seed-vtb-7539',name:'ВТБ ••7539',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true},
+ {id:'seed-alfa',name:'Альфа-Банк',balance:0,balanceDate:'',kind:'Карта',needsReconciliation:true}
  ];
  state.accounts=state.accounts.filter(a=>!['seed-sber-card2','seed-sber-card3'].includes(a.id));
  const oldOzon=state.accounts.find(a=>a.id==='seed-ozon');if(oldOzon&&oldOzon.needsReconciliation&&!oldOzon.balanceDate){oldOzon.name='Ozon Банк · основной счёт';oldOzon.balance=987.01;oldOzon.balanceDate='2026-10-10';oldOzon.kind='Счёт';delete oldOzon.needsReconciliation}
@@ -369,8 +371,8 @@ function renderIncomePlan(){
 const renderWithAnalytics=render;render=function(){renderWithAnalytics();renderIncomePlan()};
 
 let activeBank='sber';
-const bankCatalog=[['sber','Сбер'],['ozon','Ozon'],['wb','WB'],['tbank','Т-Банк'],['other','Другие']];
-function bankOfAccount(a){let n=String(a.name||'').toLowerCase();if(/сбер|sber/.test(n))return 'sber';if(/ozon|озон/.test(n))return 'ozon';if(/wb|wildberries|вб/.test(n))return 'wb';if(/т-банк|тбанк|t-bank|tbank|тинькофф/.test(n))return 'tbank';return 'other'}
+const bankCatalog=[['sber','Сбер'],['ozon','Ozon'],['wb','WB'],['tbank','Т-Банк'],['vtb','ВТБ'],['alfa','Альфа-Банк'],['other','Другие']];
+function bankOfAccount(a){let n=String(a.name||'').toLowerCase();if(/сбер|sber/.test(n))return 'sber';if(/ozon|озон/.test(n))return 'ozon';if(/wb|wildberries|вб/.test(n))return 'wb';if(/т-банк|тбанк|t-bank|tbank|тинькофф/.test(n))return 'tbank';if(/втб|vtb/.test(n))return 'vtb';if(/альфа|alfa|alpha/.test(n))return 'alfa';return 'other'}
 function selectBank(key){activeBank=key;renderBankViews();}
 function renderBankViews(){
  const bankBlocks=bankCatalog.map(([key,label])=>{
