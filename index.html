@@ -798,11 +798,11 @@ function classifyMarketplace(items,bank){
   used.add(op.id);linked.push({item:m.item,op});
  }
  for(const {item,op} of linked){
-  if(op.userReviewed||op.duplicateExcluded)continue;
+  if(op.userReviewed||op.confirmedByUser||op.duplicateExcluded)continue;
   op.category=item.group;op.subcategory=item.subgroup;op.itemName=item.item;
   op.marketplaceClassified=bank;
  }
- if(linked.length){localStorage.setItem(KEY,JSON.stringify(state));render();}
+ if(linked.some(x=>!x.op.userReviewed&&!x.op.confirmedByUser&&!x.op.duplicateExcluded)){localStorage.setItem(KEY,JSON.stringify(state));render();}
  return {linked:linked.length,review:eligible.length-linked.length,excluded:items.length-eligible.length};
 }
 function applyOzonDetails(){
