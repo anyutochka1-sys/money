@@ -96,4 +96,5 @@ $('budgetForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.target),cat
 $('plannedForm').elements.date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 $('plannedForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.target);state.planned.push({id:'p'+Date.now(),date:String(f.get('date')),amount:money(f.get('amount')),category:String(f.get('category')),description:String(f.get('description'))});e.target.reset();save()};
 const __render=render;render=function(){__render();renderBudget();renderPlanned()};
+render();
 </script></body></html>
