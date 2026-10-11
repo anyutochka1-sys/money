@@ -533,7 +533,7 @@ function renderSpendingDonut(){
   tree[g]??={};tree[g][p]??={};tree[g][p][n]=(tree[g][p][n]||0)+v;
  }
  for(const o of ops){
-  if(Array.isArray(o.items)&&o.items.length){for(const item of o.items)insert(item.category||o.category,item.subcategory||o.subcategory,item.name||item.description||o.description,item.price||item.amount||0)}
+  if(Array.isArray(o.items)&&o.items.length){let allocated=0;for(const item of o.items){const value=cents(item.price??item.amount??0);allocated+=value;insert(item.category||o.category,item.subcategory||o.subcategory,item.name||item.description||o.description,value/100)}const remainder=cents(o.amount)-allocated;if(remainder)insert(o.category||'Сверка чека','Разница с суммой операции',o.description||'Не распределено по товарам',remainder/100)}
   else insert(o.category,o.subcategory,o.itemName||o.description,o.amount);
  }
  for(const refund of linkedRefundsForPeriod()){
