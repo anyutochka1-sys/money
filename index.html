@@ -1009,19 +1009,19 @@ loadOzonDetails();
 
 let wbPaidActivity=[];
 function renderLatestActivity(){
- const confirmed=wbPaidActivity.filter(x=>x.paidDate&&x.amount>0).map(x=>({
-  id:'catalog-'+x.id,date:x.paidDate,description:x.item,amount:x.amount,
-  type:'catalog',account:'seed-wb',category:'Покупка WB · оплачено по заказу',sortTime:x.paidDate+(x.id==='wb-18'?'T04:57:00':x.id==='wb-17'?'T06:58:00':'T06:56:00')
- }));
  const actual=state.ops.filter(o=>!o.duplicateExcluded);
+ const orders=wbPaidActivity.filter(x=>x.paidDate).map(x=>({id:'catalog-'+x.id,date:x.paidDate,amount:x.amount,description:x.item,type:'order',account:'seed-wb',sortTime:x.paidDate+'T23:00:00'}));
  const entries=actual.map(o=>({...o,sortTime:o.date+'T12:00:00'}));
- // Перевод Сбер → WB из выписок 12.10.2026. Показываем в ленте, не считаем расходом.
-
-
- const identity=(a,b)=>a.date===b.date&&a.account===b.account&&Math.abs(a.amount-b.amount)<.01&&a.type==='expense';
- for(const x of confirmed){if(!actual.some(o=>identity(o,x)))entries.push(x)}
- entries.sort((a,b)=>b.sortTime.localeCompare(a.sortTime)||(b.id||'').localeCompare(a.id||''));
- document.getElementById('latest').innerHTML=entries.sort((a,b)=>Number(Boolean(b.confirmedByUser))-Number(Boolean(a.confirmedByUser))||b.sortTime.localeCompare(a.sortTime)).slice(0,8).map(o=>'<div class="activity-item"><div class="activity-top"><span>'+esc(o.date)+'</span><strong>'+(['expense','debt','archivedDebt','archivedDebtLinked','catalog'].includes(o.type)?'−':o.type==='transfer'?'⇄':o.type==='unverified'?'?':'+')+fmt(o.amount)+'</strong></div><div class="activity-description">'+esc(o.description||o.itemName||o.category||o.type)+'</div><small>'+esc(o.type==='catalog'?'Покупка WB подтверждена · в банковских расходах повторно не учтена':o.type==='transfer'?'Между своими счетами':o.type==='expense'?'Расход':o.type==='income'?'Доход':o.type==='family'?'Помощь семьи':o.type==='debt'?'Платёж по кредиту':o.type==='archivedDebtLinked'?'Платёж из выписки · кредит':o.type==='archivedDebt'?'Платёж по долгу · сверка':o.type==='unverified'?'Требует проверки':o.type==='refund'?'Возврат':o.category||'Операция')+'</small></div>').join('')||'<p class="muted">Операций пока нет.</p>';
+ // Каталог заказов нужен для понятных названий, но не заменяет банковские движения.
+ for(const x of orders)entries.push(x);
+ entries.sort((a,b)=>b.sortTime.localeCompare(a.sortTime));
+ const seen=new Set(),visible=[];
+ for(const o of entries){
+  const key=o.date+'|'+o.type+'|'+o.account+'|'+o.amount+'|'+(o.description||'');
+  if(seen.has(key))continue;
+  seen.add(key);visible.push(o);
+ }
+ document.getElementById('latest').innerHTML=visible.slice(0,8).map(o=>'<div class="activity-item"><div class="activity-top"><span>'+esc(o.date)+'</span><strong>'+ (o.type==='order'?'✓':o.type==='transfer'?'⇄':o.type==='expense'?'−':o.type==='unverified'?'?':'+')+fmt(o.amount)+'</strong></div><div class="activity-description">'+esc(o.description||o.itemName||o.category||o.type)+'</div><small>'+esc(o.type==='order'?'Подтверждённый заказ · информационно, без повторного списания':o.type==='transfer'?'Перевод между счетами':o.type==='expense'?'Списание':o.type==='unverified'?'Требует проверки':o.category||'Операция')+'</small></div>').join('')||'<p class="muted">Операций пока нет.</p>';
 }
 
 async function loadWbDetails(){
@@ -1029,21 +1029,14 @@ async function loadWbDetails(){
  const response=await fetch('./data/wb-items-categorized-2026.json');
  if(!response.ok)throw Error('Файл не найден');
  const items=(await response.json()).items||[];
+
  wbPaidActivity=items.filter(x=>x.paidDate);
- // Подтверждённые пользователем оплаты становятся реальными расходами.
- // Архивный/ручной расход с той же датой, суммой и счётом не дублируем.
- let wbChanged=false;
- for(const x of wbPaidActivity){
-  const id='wb-confirmed-expense-'+x.id;
-  const account='seed-wb',date=x.paidDate,amount=Number(x.amount);
-  if(!date||!(amount>0))continue;
-  if(state.ops.some(o=>o.id===id))continue;
-  if(state.ops.some(o=>o.account===account&&o.date===date&&Math.abs(Number(o.amount)-amount)<.01&&o.type==='expense'))continue;
-  // Исторические записи не вычитаются из уже подтверждённых остатков.
-  state.ops.push({id,date,type:'expense',account,amount,category:x.group||'Маркетплейсы',subcategory:x.subgroup||'Покупки',itemName:x.item,description:'Wildberries · '+x.item,imported:true,sourceFile:'Подтверждённый заказ Wildberries',confirmedByUser:true});
-  wbChanged=true;
- }
- if(wbChanged)localStorage.setItem(KEY,JSON.stringify(state));
+ // Автоматически созданные на предыдущей версии копии заказов не являются банковскими списаниями.
+ // Удаляем только записи с нашим стабильным служебным ID, пользовательские записи не затрагиваем.
+ const generatedIds=new Set(['wb-confirmed-expense-wb-15','wb-confirmed-expense-wb-17','wb-confirmed-expense-wb-18']);
+ const before=state.ops.length;
+ state.ops=state.ops.filter(o=>!generatedIds.has(o.id));
+ if(state.ops.length!==before)localStorage.setItem(KEY,JSON.stringify(state));
  render();
  renderLatestActivity();
  const paid=items.filter(x=>x.status!=='in_transit_unpaid');
