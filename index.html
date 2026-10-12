@@ -304,10 +304,15 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  if(!ozonAnnualExists)state.ops.push({id:'confirmed-ozon-annual-20261012',date:'2026-10-12',type:'expense',account:'seed-sber-credit-8611',amount:1790,category:'Подписки',subcategory:'Ozon',itemName:'Ozon Premium · годовая подписка',description:'Ozon · годовая подписка на 12 месяцев',confirmedByUser:true});
  const savingsMoveExists=state.ops.some(x=>x.id==='confirmed-savings-to-3535-2500-20261012'||(x.date==='2026-10-12'&&x.type==='transfer'&&x.account==='seed-sber-savings'&&x.destination==='seed-sber-3535'&&cents(x.amount)===250000));
  if(!savingsMoveExists)state.ops.push({id:'confirmed-savings-to-3535-2500-20261012',date:'2026-10-12',type:'transfer',account:'seed-sber-savings',destination:'seed-sber-3535',amount:2500,category:'Между своими счетами',description:'Сбер накопительный ••8904 → платёжный ••3535',confirmedByUser:true});
- // Сумма 2 942 ₽ на скриншоте — поступление по СБП, а не чек платья. Не придумываем размер покупки WB.
+ // Выписки от 12.10.2026 подтверждают две разные операции: перевод Сбер → WB на 2 942 ₽ и оплату платья WB на 2 942 ₽. Перевод не является расходом.
  state.ops=state.ops.filter(x=>!['confirmed-sber-to-wb-2942-20261012','confirmed-wb-dress-2942-20261012'].includes(x.id)||x.userReviewed);
  const ya=state.ops.find(x=>x.id==='confirmed-yandex-kids-20261012');if(ya&&ya.account==='seed-sber-credit-8611'&&cents(ya.amount)===199&&!ya.userReviewed){ya.itemName='Яндекс Дети';ya.description='Яндекс Дети · подписка';ya.category='Подписки';ya.subcategory='Яндекс'}
  for(const o of ops)if(!state.ops.some(x=>x.id===o.id||x.date===o.date&&x.type===o.type&&Math.abs(x.amount-o.amount)<.01&&(x.description||'').toLowerCase().includes(o.description.split(' · ')[0].toLowerCase())))state.ops.push(o);
+ // По выписке Сбера от 12 октября: пополнение WB с платёжного счёта, не покупка.
+ if(!state.ops.some(o=>o.id==='verified-sber-wb-2942-20261012'||(o.date==='2026-10-12'&&o.type==='transfer'&&o.amount===2942&&/wb|wildberries|вайлдберриз/i.test(o.description||'')))){
+  state.ops.push({id:'verified-sber-wb-2942-20261012',date:'2026-10-12',type:'transfer',account:'seed-sber-6993',destination:'seed-wb',amount:2942,description:'Сбер → WB Банк · пополнение для оплаты платья',imported:true,confirmedByUser:true});
+ }
+
  const budgets=[{month:'2026-10',category:'Кредиты',amount:28000},{month:'2026-10',category:'Подписки',amount:2788}];
  for(let y=2026;y<=2027;y++)for(let m=1;m<=12;m++){let month=y+'-'+String(m).padStart(2,'0');if(month<'2026-10'||month>'2027-09')continue;budgets.push({month,category:'Маникюр',amount:2200});if(month>='2026-11'){budgets.push({month,category:'Подписки',amount:5778},{month,category:'Телефон',amount:575},{month,category:'Кредиты',amount:33000})}}
  for(const b of budgets)if(!state.budgets.some(x=>x.month===b.month&&x.category===b.category))state.budgets.push(b);
@@ -1011,8 +1016,8 @@ function renderLatestActivity(){
  const actual=state.ops.filter(o=>!o.duplicateExcluded);
  const entries=actual.map(o=>({...o,sortTime:o.date+'T12:00:00'}));
  // Перевод Сбер → WB из выписок 12.10.2026. Показываем в ленте, не считаем расходом.
- const transferExists=actual.some(o=>o.date==='2026-10-12'&&Math.abs(Number(o.amount)-2942)<.01&&o.type==='transfer'&&/wb|wildberries|вб|вайлдберриз/i.test(String(o.description||'')+' '+String(o.accountName||'')));
- if(!transferExists)entries.push({id:'activity-sber-wb-2942',date:'2026-10-12',sortTime:'2026-10-12T04:39:00',account:'seed-sber-6993',type:'transfer',amount:2942,description:'Сбер → WB Банк · перевод на покупку платья'});
+
+
  const identity=(a,b)=>a.date===b.date&&a.account===b.account&&Math.abs(a.amount-b.amount)<.01&&a.type==='expense';
  for(const x of confirmed){if(!actual.some(o=>identity(o,x)))entries.push(x)}
  entries.sort((a,b)=>b.sortTime.localeCompare(a.sortTime)||(b.id||'').localeCompare(a.id||''));
