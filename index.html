@@ -1022,6 +1022,21 @@ async function loadWbDetails(){
  if(!response.ok)throw Error('Файл не найден');
  const items=(await response.json()).items||[];
  wbPaidActivity=items.filter(x=>x.paidDate);
+ // Подтверждённые пользователем оплаты становятся реальными расходами.
+ // Архивный/ручной расход с той же датой, суммой и счётом не дублируем.
+ let wbChanged=false;
+ for(const x of wbPaidActivity){
+  const id='wb-confirmed-expense-'+x.id;
+  const account='seed-wb',date=x.paidDate,amount=Number(x.amount);
+  if(!date||!(amount>0))continue;
+  if(state.ops.some(o=>o.id===id))continue;
+  if(state.ops.some(o=>o.account===account&&o.date===date&&Math.abs(Number(o.amount)-amount)<.01&&o.type==='expense'))continue;
+  // Исторические записи не вычитаются из уже подтверждённых остатков.
+  state.ops.push({id,date,type:'expense',account,amount,category:x.group||'Маркетплейсы',subcategory:x.subgroup||'Покупки',itemName:x.item,description:'Wildberries · '+x.item,imported:true,sourceFile:'Подтверждённый заказ Wildberries',confirmedByUser:true});
+  wbChanged=true;
+ }
+ if(wbChanged)localStorage.setItem(KEY,JSON.stringify(state));
+ render();
  renderLatestActivity();
  const paid=items.filter(x=>x.status!=='in_transit_unpaid');
  $('wbItemStatus').textContent=items.length+' товаров распознано по скриншотам. '+paid.length+' оплаченных или полученных, '+(items.length-paid.length)+' неоплаченных. Суммы здесь справочные и не прибавляются к банковским расходам.';
