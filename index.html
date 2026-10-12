@@ -204,6 +204,7 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
 
 // Подтверждённые сведения на 11.10.2026. Начальные остатки не корректируются задним числом.
 (function initializeKnownData(){
+ const cents=n=>Math.round((Number(n)||0)*100);
  const accounts=[
  {id:'seed-sber-6993',name:'Сбер ••6993',balance:829.34,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-sber-1814',name:'Сбер ••1814',balance:0,balanceDate:'2026-10-11',kind:'Карта'},
