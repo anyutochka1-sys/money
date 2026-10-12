@@ -1036,7 +1036,25 @@ async function loadWbDetails(){
  const generatedIds=new Set(['wb-confirmed-expense-wb-15','wb-confirmed-expense-wb-17','wb-confirmed-expense-wb-18']);
  const before=state.ops.length;
  state.ops=state.ops.filter(o=>!generatedIds.has(o.id));
+
  if(state.ops.length!==before)localStorage.setItem(KEY,JSON.stringify(state));
+ // Каждая строка выписки учитывается один раз. Два списания по 200 ₽ являются разными операциями.
+ const wbPayments=[
+  {id:'verified-wb-20261012-0457-2942',time:'04:57',amount:2942,category:'Одежда',subcategory:'Женская одежда',itemName:'Платье',description:'Wildberries · платье'},
+  {id:'verified-wb-20261012-0646-200',time:'06:46',amount:200,category:'Дети',subcategory:'Игрушки и развитие',itemName:'Детское лото · часть заказа 7 шт.',description:'Wildberries · детское лото (200 ₽ из заказа 1400 ₽)'},
+  {id:'verified-wb-20261012-0657-1200',time:'06:57',amount:1200,category:'Дети',subcategory:'Игрушки и развитие',itemName:'Детское лото · часть заказа 7 шт.',description:'Wildberries · детское лото (1200 ₽ из заказа 1400 ₽)'},
+  {id:'verified-wb-20261012-0658-200',time:'06:58',amount:200,category:'Дети',subcategory:'Игрушки и развитие',itemName:'Детское лото, 1 шт.',description:'Wildberries · детское лото, 1 шт.'}
+ ];
+ let paymentsChanged=false;
+ for(const x of wbPayments){
+  if(state.ops.some(o=>o.id===x.id))continue;
+  const matching=state.ops.filter(o=>o.date==='2026-10-12'&&o.account==='seed-wb'&&o.type==='expense'&&Math.abs(Number(o.amount)-x.amount)<.01);
+  const required=wbPayments.filter(p=>p.amount===x.amount&&p.time<=x.time).length;
+  if(matching.length>=required)continue;
+  state.ops.push({...x,date:'2026-10-12',type:'expense',account:'seed-wb',imported:true,confirmedByUser:true,sourceFile:'Выписка WB Банк 12.10.2026'});
+  paymentsChanged=true;
+ }
+ if(paymentsChanged)localStorage.setItem(KEY,JSON.stringify(state));
  render();
  renderLatestActivity();
  const paid=items.filter(x=>x.status!=='in_transit_unpaid');
