@@ -203,6 +203,7 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  const accounts=[
  {id:'seed-sber-6993',name:'Сбер ••6993',balance:829.34,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-sber-1814',name:'Сбер ••1814',balance:0,balanceDate:'2026-10-11',kind:'Карта'},
+ {id:'seed-sber-credit-8611',name:'Сбер · кредитная карта ••8611',balance:0,balanceDate:'2026-10-11',kind:'Кредитная карта'},
  {id:'seed-sber-savings',name:'Сбер · накопительный',balance:12000,balanceDate:'2026-10-11',kind:'Накопительный счёт'},
  {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-ozon',name:'Ozon Банк · основной счёт',balance:987.01,balanceDate:'2026-10-10',kind:'Счёт'},
@@ -234,6 +235,7 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  {id:'seed-transfer-wb-1011',date:'2026-10-11',type:'transfer',account:'seed-sber-6993',destination:'seed-wb',amount:300,category:'Другое',description:'Перевод себе на WB; исходный счёт требует уточнения'}
  ];
  const oldTransfer=state.ops.find(o=>o.id==='seed-transfer-wb-1011');if(oldTransfer)oldTransfer.account='seed-sber-6993';
+ if(!state.ops.some(o=>o.id==='confirmed-yandex-kids-20261012'||(o.date==='2026-10-12'&&o.type==='expense'&&cents(o.amount)===199&&/яндекс.*дети|дети.*яндекс/i.test(o.description||''))))state.ops.push({id:'confirmed-yandex-kids-20261012',date:'2026-10-12',type:'expense',account:'seed-sber-credit-8611',amount:199,category:'Подписки',subcategory:'Яндекс',itemName:'Яндекс Дети',description:'Подписка Яндекс Дети',confirmedByUser:true});
  for(const o of ops)if(!state.ops.some(x=>x.id===o.id||x.date===o.date&&x.type===o.type&&Math.abs(x.amount-o.amount)<.01&&(x.description||'').toLowerCase().includes(o.description.split(' · ')[0].toLowerCase())))state.ops.push(o);
  const budgets=[{month:'2026-10',category:'Кредиты',amount:28000},{month:'2026-10',category:'Подписки',amount:2788}];
  for(let y=2026;y<=2027;y++)for(let m=1;m<=12;m++){let month=y+'-'+String(m).padStart(2,'0');if(month<'2026-10'||month>'2027-09')continue;budgets.push({month,category:'Маникюр',amount:2200});if(month>='2026-11'){budgets.push({month,category:'Подписки',amount:5778},{month,category:'Телефон',amount:575},{month,category:'Кредиты',amount:33000})}}
@@ -258,10 +260,11 @@ function saveBenefit(){const n=Number($('benefitInput').value);if(!Number.isFini
 function saveInvestments(){const n=Number($('investmentInput').value);if(!Number.isFinite(n)||n<0){alert('Укажите сумму не меньше нуля');return;}state.investmentRub=n;save();}
 function goto(tab){document.querySelectorAll('section.panel').forEach(s=>s.classList.toggle('active',s.id===tab));document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='add'){$('opForm').elements.date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>goto(b.dataset.tab));
-function debtBalance(d){let p=cents(d.principal),i=cents(d.interest);for(const o of state.ops){if(o.type==='debt'&&o.loan===d.name&&!o.imported&&(!d.balanceDate||o.date>d.balanceDate)){p-=cents(o.principalPaid);i-=cents(o.interestPaid)}}return {principal:Math.max(0,p)/100,interest:Math.max(0,i)/100}}function balance(a){let base=cents(a.balance);for(const o of state.ops){if(o.imported||(a.balanceDate&&o.date<=a.balanceDate))continue;const v=cents(o.amount);if(o.type==='transfer'){if(o.account===a.id)base-=v;if(o.destination===a.id)base+=v;}else if(o.account===a.id){if(o.type==='income'||o.type==='family'||o.type==='refund')base+=v;else if(o.type==='expense'||o.type==='debt')base-=v;/* Неуточнённые и исключённые записи не меняют доступный остаток. */}}return base/100}
+function debtBalance(d){let p=cents(d.principal),i=cents(d.interest);for(const o of state.ops){if(o.type==='debt'&&o.loan===d.name&&!o.imported&&(!d.balanceDate||o.date>d.balanceDate)){p-=cents(o.principalPaid);i-=cents(o.interestPaid)}}if(/кредитная сберкарта/i.test(d.name)){for(const o of state.ops){if(o.account==='seed-sber-credit-8611'&&o.type==='expense'&&!o.imported&&(!d.balanceDate||o.date>d.balanceDate))p+=cents(o.amount)}}return {principal:Math.max(0,p)/100,interest:Math.max(0,i)/100}}function balance(a){let base=cents(a.balance);for(const o of state.ops){if(o.imported||(a.balanceDate&&o.date<=a.balanceDate))continue;const v=cents(o.amount);if(o.type==='transfer'){if(o.account===a.id)base-=v;if(o.destination===a.id)base+=v;}else if(o.account===a.id){if(o.type==='income'||o.type==='family'||o.type==='refund')base+=v;else if(o.type==='expense'||o.type==='debt')base-=v;/* Неуточнённые и исключённые записи не меняют доступный остаток. */}}return base/100}
 function isSavingsAccount(a){return /накоп|сбереж|вклад|резерв/i.test(String(a.kind||'')+' '+String(a.name||''))}
+function isCreditAccount(a){return /кредитная карта/i.test(String(a.kind||''))}
 function isVerifiedAccount(a){return !a.needsReconciliation||!!a.balanceDate}
-function availableBalanceRub(accounts){return accounts.filter(a=>isVerifiedAccount(a)&&!isSavingsAccount(a)).reduce((v,a)=>v+cents(balance(a)),0)/100}
+function availableBalanceRub(accounts){return accounts.filter(a=>isVerifiedAccount(a)&&!isSavingsAccount(a)&&!isCreditAccount(a)).reduce((v,a)=>v+cents(balance(a)),0)/100}
 const row=(left,right)=>'<div class="split finance-row" style="padding:11px 0;border-bottom:1px solid #edf1f2"><span>'+left+'</span><b>'+right+'</b></div>';
 function render(){
 let now=$('monthPicker').value||new Date().toISOString().slice(0,7);$('monthPicker').value=now;
@@ -445,7 +448,7 @@ const bankCatalog=[['sber','Сбер'],['ozon','Ozon'],['wb','WB'],['tbank','Т-
 function bankOfAccount(a){let n=String(a.name||'').toLowerCase();if(/сбер|sber/.test(n))return 'sber';if(/ozon|озон/.test(n))return 'ozon';if(/wb|wildberries|вб/.test(n))return 'wb';if(/т-банк|тбанк|t-bank|tbank|тинькофф/.test(n))return 'tbank';if(/втб|vtb/.test(n))return 'vtb';if(/альфа|alfa|alpha/.test(n))return 'alfa';return 'other'}
 function selectBank(key){activeBank=key;renderBankViews();}
 function updateAccountSnapshot(id){
- const a=state.accounts.find(x=>x.id===id);if(!a)return;
+ const a=state.accounts.find(x=>x.id===id);if(!a)return;if(isCreditAccount(a))return alert('Остаток долга по кредитке учитывается во вкладке «Кредиты».');
  const entered=prompt('Остаток на счёте «'+a.name+'» в рублях на выбранную дату',String(balance(a)));
  if(entered===null)return;
  const normalized=entered.trim().replace(/\s/g,'').replace(',','.');
@@ -461,7 +464,7 @@ function renderBankViews(){
  const bankBlocks=bankCatalog.map(([key,label])=>{
  const arr=state.accounts.filter(a=>bankOfAccount(a)===key);if(!arr.length)return '';
  const total=availableBalanceRub(arr);
- return '<div class="bank-group"><div class="split"><h2>'+esc(label)+'</h2><strong>'+fmt(total)+'</strong></div>'+arr.map(a=>'<div class="bank-account"><div class="split"><span>'+esc(a.name)+'</span><b>'+(a.needsReconciliation&&!a.balanceDate?'Не сверено':fmt(balance(a)))+'</b></div><small>'+esc(a.kind)+(a.balanceDate?' · остаток от '+esc(a.balanceDate):' · требуется сверка')+'</small><button type="button" class="secondary" onclick="updateAccountSnapshot('+JSON.stringify(a.id).replace(/"/g,'&quot;')+')">Обновить остаток</button></div>').join('')+'</div>';
+ return '<div class="bank-group"><div class="split"><h2>'+esc(label)+'</h2><strong>'+fmt(total)+'</strong></div>'+arr.map(a=>'<div class="bank-account"><div class="split"><span>'+esc(a.name)+'</span><b>'+(isCreditAccount(a)?'Кредитный счёт':a.needsReconciliation&&!a.balanceDate?'Не сверено':fmt(balance(a)))+'</b></div><small>'+esc(a.kind)+(a.balanceDate?' · остаток от '+esc(a.balanceDate):' · требуется сверка')+'</small><button type="button" class="secondary" onclick="updateAccountSnapshot('+JSON.stringify(a.id).replace(/"/g,'&quot;')+')">Обновить остаток</button></div>').join('')+'</div>';
  }).join('');
  $('bankSummary').innerHTML='<small>На плашках банков показаны только доступные деньги на картах и текущих счетах. Накопления ниже отображаются отдельно. Остатки не синхронизированы с банками.</small>';
  $('accountList').innerHTML='<div class="bank-groups">'+bankBlocks+'</div>';
