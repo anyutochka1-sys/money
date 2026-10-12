@@ -358,7 +358,38 @@ function isCreditAccount(a){return /кредитная карта/i.test(String(
 function isVerifiedAccount(a){return !a.needsReconciliation||!!a.balanceDate}
 function availableBalanceRub(accounts){return accounts.filter(a=>isVerifiedAccount(a)&&!a.aliasOf&&a.id!=='seed-ozon-savings'&&!isSavingsAccount(a)&&!isCreditAccount(a)).reduce((v,a)=>v+cents(balance(a)),0)/100}
 const row=(left,right)=>'<div class="split finance-row" style="padding:11px 0;border-bottom:1px solid #edf1f2"><span>'+left+'</span><b>'+right+'</b></div>';
+function reconcileOct12(){
+ const day='2026-10-12',wb='seed-wb',sb='seed-sber-6993';
+ const rows=[
+ ['wb-0457-2942',wb,'expense',2942,'Платье','Одежда','Женская одежда'],
+ ['wb-0646-200',wb,'expense',200,'Лото · часть заказа на 1400 ₽','Дети','Игрушки и развитие'],
+ ['wb-0657-1200',wb,'expense',1200,'Лото · часть заказа на 1400 ₽','Дети','Игрушки и развитие'],
+ ['wb-0658-200',wb,'expense',200,'Лото · отдельный заказ','Дети','Игрушки и развитие'],
+ ['wb-0643-refund296',wb,'refund',296,'Возврат Wildberries','',''],
+ ['wb-0439-in2942',wb,'transfer',2942,'Пополнение WB из Сбера','',''],
+ ['wb-0655-in1200',wb,'transfer',1200,'Перевод от Павла на WB','',''],
+ ['wb-0658-in100',wb,'transfer',100,'Перевод на WB','',''],
+ ['sber-0439-out2942',sb,'transfer',2942,'Перевод Сбер → WB','',''],
+ ['sber-0438-in2500',sb,'transfer',2500,'Перевод с собственного счёта Сбер','',''],
+ ['sber-0658-out100',sb,'transfer',100,'Перевод Сбер → WB','','']
+ ];
+ let changed=false;
+ const bad=new Set(['wb-confirmed-expense-wb-15','wb-confirmed-expense-wb-17','wb-confirmed-expense-wb-18']);
+ const clean=state.ops.filter(o=>!bad.has(o.id));
+ if(clean.length!==state.ops.length){state.ops=clean;changed=true}
+ for(const [suffix,account,type,amount,description,category,subcategory] of rows){
+  const id='bank-20261012-'+suffix;
+  if(state.ops.some(o=>o.id===id))continue;
+  const prior=rows.filter(x=>x[1]===account&&x[2]===type&&x[3]===amount&&x[0]<=suffix).length;
+  const candidates=state.ops.filter(o=>o.date===day&&o.account===account&&o.type===type&&Math.abs(Number(o.amount)-amount)<.01);
+  if(candidates.length>=prior)continue;
+  state.ops.push({id,date:day,account,type,amount,description,category,subcategory,imported:true,sourceFile:'Выписки банков 12.10.2026',confirmedByUser:type==='expense'});
+  changed=true;
+ }
+ if(changed)localStorage.setItem(KEY,JSON.stringify(state));
+}
 function render(){
+ reconcileOct12();
 let now=$('monthPicker').value||new Date().toISOString().slice(0,7);$('monthPicker').value=now;
 let ops=state.ops.filter(o=>o.date.startsWith(now)),expenses=ops.filter(o=>o.type==='expense'),incomes=ops.filter(o=>o.type==='income'),family=ops.filter(o=>o.type==='family'),payments=ops.filter(o=>o.type==='debt');
 let sum=x=>x.reduce((s,o)=>s+cents(o.amount),0)/100;
@@ -1038,23 +1069,6 @@ async function loadWbDetails(){
  state.ops=state.ops.filter(o=>!generatedIds.has(o.id));
 
  if(state.ops.length!==before)localStorage.setItem(KEY,JSON.stringify(state));
- // Каждая строка выписки учитывается один раз. Два списания по 200 ₽ являются разными операциями.
- const wbPayments=[
-  {id:'verified-wb-20261012-0457-2942',time:'04:57',amount:2942,category:'Одежда',subcategory:'Женская одежда',itemName:'Платье',description:'Wildberries · платье'},
-  {id:'verified-wb-20261012-0646-200',time:'06:46',amount:200,category:'Дети',subcategory:'Игрушки и развитие',itemName:'Детское лото · часть заказа 7 шт.',description:'Wildberries · детское лото (200 ₽ из заказа 1400 ₽)'},
-  {id:'verified-wb-20261012-0657-1200',time:'06:57',amount:1200,category:'Дети',subcategory:'Игрушки и развитие',itemName:'Детское лото · часть заказа 7 шт.',description:'Wildberries · детское лото (1200 ₽ из заказа 1400 ₽)'},
-  {id:'verified-wb-20261012-0658-200',time:'06:58',amount:200,category:'Дети',subcategory:'Игрушки и развитие',itemName:'Детское лото, 1 шт.',description:'Wildberries · детское лото, 1 шт.'}
- ];
- let paymentsChanged=false;
- for(const x of wbPayments){
-  if(state.ops.some(o=>o.id===x.id))continue;
-  const matching=state.ops.filter(o=>o.date==='2026-10-12'&&o.account==='seed-wb'&&o.type==='expense'&&Math.abs(Number(o.amount)-x.amount)<.01);
-  const required=wbPayments.filter(p=>p.amount===x.amount&&p.time<=x.time).length;
-  if(matching.length>=required)continue;
-  state.ops.push({...x,date:'2026-10-12',type:'expense',account:'seed-wb',imported:true,confirmedByUser:true,sourceFile:'Выписка WB Банк 12.10.2026'});
-  paymentsChanged=true;
- }
- if(paymentsChanged)localStorage.setItem(KEY,JSON.stringify(state));
  render();
  renderLatestActivity();
  const paid=items.filter(x=>x.status!=='in_transit_unpaid');
