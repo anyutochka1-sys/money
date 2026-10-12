@@ -535,13 +535,19 @@ function quickMode(mode){
  $('quickAttachmentLabel').classList.toggle('hidden',mode==='transfer');
 }
 function renderQuickForm(){
- const f=$('quickForm');if(!f)return;
- let old=f.elements.account.value,oldDest=f.elements.destination.value;
- $('quickAccount').innerHTML='<option value="">Выберите счёт списания</option>'+state.accounts.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('');
- if(state.accounts.some(a=>a.id===old))f.elements.account.value=old;else f.elements.account.value='';
- $('quickDestination').innerHTML=state.accounts.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('');
- if(state.accounts.some(a=>a.id===oldDest))f.elements.destination.value=oldDest;
- if(!f.elements.date.value)f.elements.date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+ const source=document.getElementById('quickAccount'),dest=document.getElementById('quickDestination'),date=document.querySelector('#quickForm input[name="date"]');
+ if(!source||!dest)return;
+ const previous=source.value,previousDest=dest.value;
+ const accounts=state.accounts.filter(a=>a&&a.id);
+ source.replaceChildren(new Option('Выберите карту или счёт', ''));
+ dest.replaceChildren(new Option('Выберите счёт получения', ''));
+ for(const a of accounts){
+  source.add(new Option(a.name,a.id));
+  dest.add(new Option(a.name,a.id));
+ }
+ if(accounts.some(a=>a.id===previous))source.value=previous;
+ if(accounts.some(a=>a.id===previousDest))dest.value=previousDest;
+ if(date&&!date.value)date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 }
 function saveQuick(event){
  event.preventDefault();const f=new FormData($('quickForm')),account=String(f.get('account')),amount=money(f.get('amount'));
