@@ -333,7 +333,7 @@ function balance(a){let base=cents(a.balance);for(const o of state.ops){if(o.imp
 function isSavingsAccount(a){return /накоп|сбереж|вклад|резерв/i.test(String(a.kind||'')+' '+String(a.name||''))}
 function isCreditAccount(a){return /кредитная карта/i.test(String(a.kind||''))}
 function isVerifiedAccount(a){return !a.needsReconciliation||!!a.balanceDate}
-function availableBalanceRub(accounts){return accounts.filter(a=>isVerifiedAccount(a)&&!a.aliasOf&&!isSavingsAccount(a)&&!isCreditAccount(a)).reduce((v,a)=>v+cents(balance(a)),0)/100}
+function availableBalanceRub(accounts){return accounts.filter(a=>isVerifiedAccount(a)&&!a.aliasOf&&a.id!=='seed-ozon-savings'&&!isSavingsAccount(a)&&!isCreditAccount(a)).reduce((v,a)=>v+cents(balance(a)),0)/100}
 const row=(left,right)=>'<div class="split finance-row" style="padding:11px 0;border-bottom:1px solid #edf1f2"><span>'+left+'</span><b>'+right+'</b></div>';
 function render(){
 let now=$('monthPicker').value||new Date().toISOString().slice(0,7);$('monthPicker').value=now;
