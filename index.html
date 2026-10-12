@@ -203,6 +203,7 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  const accounts=[
  {id:'seed-sber-6993',name:'Сбер ••6993',balance:829.34,balanceDate:'2026-10-11',kind:'Карта'},
  {id:'seed-sber-1814',name:'Сбер ••1814',balance:0,balanceDate:'2026-10-11',kind:'Карта'},
+ {id:'seed-sber-3535',name:'Сбер · платёжный счёт ••3535',balance:0,balanceDate:'',kind:'Счёт',needsReconciliation:true},
  {id:'seed-sber-credit-8611',name:'Сбер · кредитная карта ••8611',balance:0,balanceDate:'2026-10-11',kind:'Кредитная карта'},
  {id:'seed-sber-savings',name:'Сбер · накопительный',balance:12000,balanceDate:'2026-10-11',kind:'Накопительный счёт'},
  {id:'seed-wb',name:'WB Банк',balance:4,balanceDate:'2026-10-11',kind:'Карта'},
@@ -238,8 +239,11 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  if(!state.ops.some(o=>o.id==='confirmed-yandex-kids-20261012'||(o.date==='2026-10-12'&&o.type==='expense'&&cents(o.amount)===199&&(o.account==='seed-sber-credit-8611'||/яндекс.*дети|дети.*яндекс/i.test(o.description||'')))))state.ops.push({id:'confirmed-yandex-kids-20261012',date:'2026-10-12',type:'expense',account:'seed-sber-credit-8611',amount:199,category:'Подписки',subcategory:'Яндекс',itemName:'Яндекс Дети',description:'Яндекс Дети · подписка',confirmedByUser:true});
  const ozonAnnualExists=state.ops.some(o=>o.id==='confirmed-ozon-annual-20261012'||(o.date==='2026-10-12'&&o.type==='expense'&&o.account==='seed-sber-credit-8611'&&cents(o.amount)===179000&&/ozon|озон/i.test(o.description||o.itemName||'')));
  if(!ozonAnnualExists)state.ops.push({id:'confirmed-ozon-annual-20261012',date:'2026-10-12',type:'expense',account:'seed-sber-credit-8611',amount:1790,category:'Подписки',subcategory:'Ozon',itemName:'Ozon Premium · годовая подписка',description:'Ozon · годовая подписка на 12 месяцев',confirmedByUser:true});
- const wbTransferExists=state.ops.some(x=>x.id==='confirmed-sber-to-wb-2942-20261012'||(x.date==='2026-10-12'&&x.type==='transfer'&&x.account==='seed-sber-6993'&&x.destination==='seed-wb'&&cents(x.amount)===294200));
- if(!wbTransferExists)state.ops.push({id:'confirmed-sber-to-wb-2942-20261012',date:'2026-10-12',type:'transfer',account:'seed-sber-6993',destination:'seed-wb',amount:2942,category:'Между своими счетами',description:'Перевод со Сбера на WB для покупки платья',confirmedByUser:true});
+ const savingsMoveExists=state.ops.some(x=>x.id==='confirmed-savings-to-3535-2500-20261012'||(x.date==='2026-10-12'&&x.type==='transfer'&&x.account==='seed-sber-savings'&&x.destination==='seed-sber-3535'&&cents(x.amount)===250000));
+ if(!savingsMoveExists)state.ops.push({id:'confirmed-savings-to-3535-2500-20261012',date:'2026-10-12',type:'transfer',account:'seed-sber-savings',destination:'seed-sber-3535',amount:2500,category:'Между своими счетами',description:'Сбер накопительный ••8904 → платёжный ••3535',confirmedByUser:true});
+ const wbExisting=state.ops.find(x=>x.id==='confirmed-sber-to-wb-2942-20261012');if(wbExisting&&!wbExisting.userReviewed)wbExisting.account='seed-sber-3535';
+ const wbTransferExists=state.ops.some(x=>x.id==='confirmed-sber-to-wb-2942-20261012'||(x.date==='2026-10-12'&&x.type==='transfer'&&x.account==='seed-sber-3535'&&x.destination==='seed-wb'&&cents(x.amount)===294200));
+ if(!wbTransferExists)state.ops.push({id:'confirmed-sber-to-wb-2942-20261012',date:'2026-10-12',type:'transfer',account:'seed-sber-3535',destination:'seed-wb',amount:2942,category:'Между своими счетами',description:'Перевод со Сбера на WB для покупки платья',confirmedByUser:true});
  const wbDressExists=state.ops.some(x=>x.id==='confirmed-wb-dress-2942-20261012'||(x.date==='2026-10-12'&&x.type==='expense'&&x.account==='seed-wb'&&cents(x.amount)===294200));
  if(!wbDressExists)state.ops.push({id:'confirmed-wb-dress-2942-20261012',date:'2026-10-12',type:'expense',account:'seed-wb',amount:2942,category:'Одежда и аксессуары',subcategory:'Платья',itemName:'Платье себе',description:'Wildberries · платье для себя',confirmedByUser:true});
  const ya=state.ops.find(x=>x.id==='confirmed-yandex-kids-20261012');if(ya&&ya.account==='seed-sber-credit-8611'&&cents(ya.amount)===199&&!ya.userReviewed){ya.itemName='Яндекс Дети';ya.description='Яндекс Дети · подписка';ya.category='Подписки';ya.subcategory='Яндекс'}
