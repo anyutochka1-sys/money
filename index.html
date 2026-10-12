@@ -362,7 +362,7 @@ const dated=state.accounts.map(a=>a.balanceDate).filter(Boolean).sort();$('balan
 $('investmentTotal').textContent=fmt(state.investmentRub);if(document.activeElement!==$('investmentInput'))$('investmentInput').value=state.investmentRub||'';$('assetTotal').textContent=fmt(availableBalanceRub(state.accounts));
 $('debtTotal').textContent=fmt(state.debts.reduce((s,d)=>{let b=debtBalance(d);return s+cents(b.principal)+cents(b.interest)},0)/100);
 // Итоги за выбранный период обновляются только в renderPeriodSummary().
-$('latest').innerHTML=state.ops.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6).map(o=>'<div class="activity-item"><div class="activity-top"><span>'+esc(o.date)+'</span><strong>'+(['expense','debt','archivedDebt','archivedDebtLinked'].includes(o.type)?'−':o.type==='transfer'?'⇄':o.type==='unverified'?'?':'+')+fmt(o.amount)+'</strong></div><div class="activity-description">'+esc(o.description||o.itemName||o.category||o.type)+'</div><small>'+esc(o.type==='transfer'?'Между своими счетами':o.type==='expense'?'Расход':o.type==='income'?'Доход':o.type==='family'?'Помощь семьи':o.type==='debt'?'Платёж по кредиту':o.type==='archivedDebtLinked'?'Платёж из выписки · кредит':o.type==='archivedDebt'?'Платёж по долгу · сверка':o.type==='unverified'?'Требует проверки':o.type==='refund'?'Возврат':o.category||'Операция')+'</small></div>').join('')||'<p class="muted">Операций пока нет.</p>';
+renderLatestActivity();
 $('accountList').innerHTML=state.accounts.map(a=>row(esc(a.name)+' <small>'+esc(a.kind)+(isSavingsAccount(a)?' · резерв, не в доступных деньгах':'')+(a.balanceDate?' · остаток на '+esc(a.balanceDate):' · дата остатка не указана')+'</small>',fmt(balance(a)))).join('')||'<p class="muted">Добавьте счета с остатками на выбранную дату.</p>';
 $('debtList').innerHTML=state.debts.map(d=>{let b=debtBalance(d);return '<div style="margin-bottom:14px">'+row(esc(d.name),fmt(b.principal+b.interest))+'<small>Основной долг '+fmt(b.principal)+' · проценты '+fmt(b.interest)+' · ставка '+esc(d.rate)+'%'+(d.bankEndDate?' · конец по графику '+esc(d.bankEndDate):'')+'</small></div>'}).join('')||'<p class="muted">Добавьте кредиты по данным банков.</p>';
 $('opAccount').innerHTML=state.accounts.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('');
@@ -1001,11 +1001,28 @@ function applyOzonDetails(){
  renderSpendingDonut();
 }
 loadOzonDetails();
+
+let wbPaidActivity=[];
+function renderLatestActivity(){
+ const confirmed=wbPaidActivity.filter(x=>x.paidDate&&x.amount>0).map(x=>({
+  id:'catalog-'+x.id,date:x.paidDate,description:x.item,amount:x.amount,
+  type:'catalog',account:'seed-wb',category:'Покупка WB · оплачено по заказу',sortTime:x.paidDate+(x.id==='wb-18'?'T04:57:00':x.id==='wb-17'?'T06:58:00':'T06:56:00')
+ }));
+ const actual=state.ops.filter(o=>!o.duplicateExcluded);
+ const entries=actual.map(o=>({...o,sortTime:o.date+'T12:00:00'}));
+ const identity=(a,b)=>a.date===b.date&&a.account===b.account&&Math.abs(a.amount-b.amount)<.01&&a.type==='expense';
+ for(const x of confirmed){if(!actual.some(o=>identity(o,x)))entries.push(x)}
+ entries.sort((a,b)=>b.sortTime.localeCompare(a.sortTime)||(b.id||'').localeCompare(a.id||''));
+ document.getElementById('latest').innerHTML=entries.slice(0,8).map(o=>'<div class="activity-item"><div class="activity-top"><span>'+esc(o.date)+'</span><strong>'+(['expense','debt','archivedDebt','archivedDebtLinked','catalog'].includes(o.type)?'−':o.type==='transfer'?'⇄':o.type==='unverified'?'?':'+')+fmt(o.amount)+'</strong></div><div class="activity-description">'+esc(o.description||o.itemName||o.category||o.type)+'</div><small>'+esc(o.type==='catalog'?'Покупка WB подтверждена · в банковских расходах повторно не учтена':o.type==='transfer'?'Между своими счетами':o.type==='expense'?'Расход':o.type==='income'?'Доход':o.type==='family'?'Помощь семьи':o.type==='debt'?'Платёж по кредиту':o.type==='archivedDebtLinked'?'Платёж из выписки · кредит':o.type==='archivedDebt'?'Платёж по долгу · сверка':o.type==='unverified'?'Требует проверки':o.type==='refund'?'Возврат':o.category||'Операция')+'</small></div>').join('')||'<p class="muted">Операций пока нет.</p>';
+}
+
 async function loadWbDetails(){
  try{
  const response=await fetch('./data/wb-items-categorized-2026.json');
  if(!response.ok)throw Error('Файл не найден');
  const items=(await response.json()).items||[];
+ wbPaidActivity=items.filter(x=>x.paidDate);
+ renderLatestActivity();
  const paid=items.filter(x=>x.status!=='in_transit_unpaid');
  $('wbItemStatus').textContent=items.length+' товаров распознано по скриншотам. '+paid.length+' оплаченных или полученных, '+(items.length-paid.length)+' неоплаченных. Суммы здесь справочные и не прибавляются к банковским расходам.';
  $('wbItemList').innerHTML='<div class="ozon-catalog">'+items.map(x=>'<div class="ozon-line"><div><b>'+esc(x.item)+'</b><small>'+esc(x.group)+' → '+esc(x.subgroup)+' · '+(x.status==='in_transit_unpaid'?'В пути, не оплачен':x.status==='in_transit_paid'?'Оплачен, в пути':'Получен')+'</small></div><strong>'+fmt(x.amount)+'</strong></div>').join('')+'</div>';
