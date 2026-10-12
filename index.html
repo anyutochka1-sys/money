@@ -195,9 +195,25 @@ header{position:relative;z-index:4}
  #overview .period-controls button{flex-shrink:0}
  header .inner .btns button:first-child{display:none}
 }
-</style></style><style>.quick-source-account{display:block!important;visibility:visible!important;opacity:1!important;min-width:0}.quick-source-account select{display:block!important;width:100%;min-height:48px;margin:8px 0}.quick-source-account strong{display:block;margin-bottom:6px}.quick-source-account .quick-account-shortcuts{display:flex!important;flex-wrap:wrap}</style></head>
+</style></style><style>.quick-source-account{display:block!important;visibility:visible!important;opacity:1!important;min-width:0}.quick-source-account select{display:block!important;width:100%;min-height:48px;margin:8px 0}.quick-source-account strong{display:block;margin-bottom:6px}.quick-source-account .quick-account-shortcuts{display:flex!important;flex-wrap:wrap}</style><style id="statement-import-style">
+#importStatements{margin-top:15px;border:1px solid #dacbb5;border-radius:16px;padding:16px;background:#fffdf8}
+#importStatements h2{margin:0 0 9px;font-size:18px}
+#importStatements .import-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+#importStatements input[type=file]{min-width:0;font-size:13px}
+#importStatements .import-note{font-size:12px;line-height:1.55;color:#736854}
+#importStatements .import-row{display:grid;grid-template-columns:90px 1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid #e7dccd;font-size:12px;align-items:start}
+#importStatements .import-row span{overflow-wrap:anywhere}
+#importStatements .import-list{max-height:330px;overflow:auto;margin:10px 0}
+@media(max-width:650px){#importStatements .import-controls{grid-template-columns:1fr}#importStatements .import-row{grid-template-columns:70px 1fr}#importStatements .import-row b{grid-column:2}}
+</style></head>
 <body><header><div class="inner"><div class="logo">✳ Мои финансы <small style="font-size:12px;font-weight:400">личный бюджет</small></div><div class="btns"><button class="secondary" onclick="downloadData()">Экспорт данных</button><button onclick="goto('add')">+ Операция</button></div></div><nav id="tabs"><button data-tab="overview" class="active">Обзор</button><button data-tab="month">Бюджет · план/факт</button><button data-tab="planned">Планируемые траты</button><button data-tab="accounts">Банки</button><button data-tab="investments">Инвестиции</button><button data-tab="debts">Кредиты</button><button data-tab="history">История</button><button data-tab="add">Добавить</button><button data-tab="receipt">📷 Чек</button><button data-tab="analytics">Анализ продуктов</button><button data-tab="creditcheck">Новый кредит?</button><button data-tab="incomeplan">Календарь доходов</button><button data-tab="settings">Настройки</button></nav></header>
-<main><section class="panel active" id="overview"><div class="quick-entry card"><div class="kicker">Быстрая запись</div><h1>Что записываем?</h1><div class="quick-actions"><button type="button" id="quickExpense" class="quick-active" onclick="quickMode('expense')">− Расход</button><button type="button" id="quickIncome" onclick="quickMode('income')">+ Доход</button><button type="button" id="quickTransfer" onclick="quickMode('transfer')">⇄ Перевод себе</button></div><form id="quickForm" onsubmit="saveQuick(event)"><label>Сумма, ₽<input type="number" name="amount" inputmode="decimal" min=".01" step=".01" placeholder="0" required></label><div class="quick-source-account full-row"><strong>Выберите карту или счёт *</strong><select name="account" id="quickAccount" required onchange="syncQuickAccountChips()"><option value="">Выберите счёт списания</option></select><div class="quick-account-shortcuts" id="quickAccountCards" role="group" aria-label="Счёт операции"></div><small><strong>С какого счёта списали?</strong> Выберите карту выше, включая «Сбер · кредитная карта ••8611». Выбранный счёт выделится.</small></div><label id="quickDestinationLabel" class="hidden">На какой счёт<select name="destination" id="quickDestination"></select></label><label>На что / откуда<input name="description" placeholder="Например, продукты или пособие"></label><label>Дата<input name="date" type="date" required></label><div id="quickCategoryBlock" class="full-row category-steps"><label>Найти категорию или подкатегорию<input id="quickCategorySearch" type="search" list="quickCategorySearchSuggestions" placeholder="Начните вводить: подписки, продукты, дети…" oninput="searchQuickCategory(this.value)" onchange="searchQuickCategory(this.value)" autocomplete="off"><datalist id="quickCategorySearchSuggestions"></datalist></label><details class="quick-category-details"><summary>Все группы и подгруппы · выбрать вручную</summary><div class="quick-category-fields"><label>Большая группа<select name="category" id="quickCategory" onchange="updateQuickCategories()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(1)">+ Добавить группу</button></label><label>Подгруппа<select name="subcategory" id="quickSubcategory" onchange="updateQuickItems()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(2)">+ Добавить подгруппу</button></label><label>Конкретная покупка / третья группа<input name="itemName" id="quickItemName" list="quickItemSuggestions" placeholder="Например, батончик Milky Way или шапка Мире"><datalist id="quickItemSuggestions"></datalist><button type="button" class="secondary cat-add" onclick="addQuickCategory(3)">+ Добавить товар</button></label></div></details></div><details class="full-row compact-inline"><summary>Добавить чек или документ</summary><label id="quickAttachmentLabel" class="quick-attach">📎 Прикрепить чек или документ<input id="quickAttachment" type="file" accept="image/*,application/pdf" onchange="quickAttachmentSelected(this)"><small id="quickAttachmentStatus">Необязательно</small></label></details><button class="full-row">Сохранить операцию</button></form><small>Для платежа по кредиту откройте <a href="#" onclick="event.preventDefault();goto('add')">расширенную форму</a>.</small></div><div class="period-panel"><h1>Общая картина</h1><div class="period-controls"><button onclick="choosePeriod('day')">День</button><button onclick="choosePeriod('week')">Неделя</button><button onclick="choosePeriod('month')">Месяц</button><button onclick="choosePeriod('quarter')">Квартал</button><button onclick="choosePeriod('half')">Полгода</button><button onclick="choosePeriod('year')">Год</button></div><label>Дата отчёта<input type="date" id="periodDate" onchange="choosePeriod()"></label><small id="periodText"></small></div><p class="muted">Ваши данные хранятся только в этом браузере. Для сохранности используйте экспорт.</p><div class="grid">
+<main><section class="panel active" id="overview"><div class="quick-entry card"><div id="importStatements"><h2>📄 Загрузить выписку банка</h2>
+<p class="import-note">Файл читается на вашем устройстве. Банковская выписка не отправляется в GitHub. Поддерживаются текстовые PDF Сбербанка и WB Банка, а также CSV с полями дата, сумма, описание. Зашифрованные PDF и сканы пока не поддерживаются.</p>
+<div class="import-controls"><label>Выписка PDF или CSV<input id="statementFile" type="file" accept=".pdf,.csv,application/pdf,text/csv"></label><button type="button" onclick="previewStatementImport()">Проверить операции</button></div>
+<div id="statementImportStatus" class="import-note" role="status" aria-live="polite"></div>
+<div id="statementImportPreview" hidden><p id="statementImportSummary"></p><div class="import-list" id="statementImportRows"></div>
+<div class="btns"><button type="button" onclick="confirmStatementImport()">Добавить новые операции</button><button type="button" class="secondary" onclick="cancelStatementImport()">Отмена</button></div>
+<p class="import-note">Сравниваются дата, счёт, сумма и описание; подозрительные совпадения пропускаются. Переводы и неопознанные поступления не включаются в обычные расходы. Проверьте предварительный список перед сохранением.</p></div></div><div class="kicker">Быстрая запись</div><h1>Что записываем?</h1><div class="quick-actions"><button type="button" id="quickExpense" class="quick-active" onclick="quickMode('expense')">− Расход</button><button type="button" id="quickIncome" onclick="quickMode('income')">+ Доход</button><button type="button" id="quickTransfer" onclick="quickMode('transfer')">⇄ Перевод себе</button></div><form id="quickForm" onsubmit="saveQuick(event)"><label>Сумма, ₽<input type="number" name="amount" inputmode="decimal" min=".01" step=".01" placeholder="0" required></label><div class="quick-source-account full-row"><strong>Выберите карту или счёт *</strong><select name="account" id="quickAccount" required onchange="syncQuickAccountChips()"><option value="">Выберите счёт списания</option></select><div class="quick-account-shortcuts" id="quickAccountCards" role="group" aria-label="Счёт операции"></div><small><strong>С какого счёта списали?</strong> Выберите карту выше, включая «Сбер · кредитная карта ••8611». Выбранный счёт выделится.</small></div><label id="quickDestinationLabel" class="hidden">На какой счёт<select name="destination" id="quickDestination"></select></label><label>На что / откуда<input name="description" placeholder="Например, продукты или пособие"></label><label>Дата<input name="date" type="date" required></label><div id="quickCategoryBlock" class="full-row category-steps"><label>Найти категорию или подкатегорию<input id="quickCategorySearch" type="search" list="quickCategorySearchSuggestions" placeholder="Начните вводить: подписки, продукты, дети…" oninput="searchQuickCategory(this.value)" onchange="searchQuickCategory(this.value)" autocomplete="off"><datalist id="quickCategorySearchSuggestions"></datalist></label><details class="quick-category-details"><summary>Все группы и подгруппы · выбрать вручную</summary><div class="quick-category-fields"><label>Большая группа<select name="category" id="quickCategory" onchange="updateQuickCategories()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(1)">+ Добавить группу</button></label><label>Подгруппа<select name="subcategory" id="quickSubcategory" onchange="updateQuickItems()"></select><button type="button" class="secondary cat-add" onclick="addQuickCategory(2)">+ Добавить подгруппу</button></label><label>Конкретная покупка / третья группа<input name="itemName" id="quickItemName" list="quickItemSuggestions" placeholder="Например, батончик Milky Way или шапка Мире"><datalist id="quickItemSuggestions"></datalist><button type="button" class="secondary cat-add" onclick="addQuickCategory(3)">+ Добавить товар</button></label></div></details></div><details class="full-row compact-inline"><summary>Добавить чек или документ</summary><label id="quickAttachmentLabel" class="quick-attach">📎 Прикрепить чек или документ<input id="quickAttachment" type="file" accept="image/*,application/pdf" onchange="quickAttachmentSelected(this)"><small id="quickAttachmentStatus">Необязательно</small></label></details><button class="full-row">Сохранить операцию</button></form><small>Для платежа по кредиту откройте <a href="#" onclick="event.preventDefault();goto('add')">расширенную форму</a>.</small></div><div class="period-panel"><h1>Общая картина</h1><div class="period-controls"><button onclick="choosePeriod('day')">День</button><button onclick="choosePeriod('week')">Неделя</button><button onclick="choosePeriod('month')">Месяц</button><button onclick="choosePeriod('quarter')">Квартал</button><button onclick="choosePeriod('half')">Полгода</button><button onclick="choosePeriod('year')">Год</button></div><label>Дата отчёта<input type="date" id="periodDate" onchange="choosePeriod()"></label><small id="periodText"></small></div><p class="muted">Ваши данные хранятся только в этом браузере. Для сохранности используйте экспорт.</p><div class="grid">
 <details class="card full reconciliation-card compact-disclosure"><summary>Проверка выписок и спорных операций <span class="summary-hint">по необходимости</span></summary><div id="reconciliationSummary">Загружается сверка операций…</div><details class="review-details"><summary>Возвраты и связанные покупки · уменьшают расходы по категории</summary><div id="refundReview"></div></details><details class="review-details"><summary>Посмотреть операции, которые требуют уточнения <span id="pendingCount"></span></summary><div id="duplicateReview"></div><div id="reconciliationQueue"></div><button type="button" class="secondary" id="moreReviewButton" onclick="showMoreReview()" style="margin-top:10px;display:none">Показать ещё 20 операций</button></details></details>
 <div class="card hero-balance"><div class="kicker">Доступные деньги</div><div class="big" id="assetTotal">0 ₽</div><small>Только карты и текущие счета · без накоплений и инвестиций</small><small id="balanceFreshness"></small></div>
 <div class="card"><div class="kicker">Общий долг</div><div class="big" id="debtTotal">0 ₽</div><small>По введённым кредитам</small></div>
@@ -980,4 +996,131 @@ loadWbDetails();
 
 
 correctConfirmedOctoberExpenses();render();
+
+let statementPending=[];
+function statementVal(t){return Math.round(Number(String(t).replace(/\s/g,'').replace(',','.'))*100)/100}
+function statementDate(t){let m=String(t).match(/(\d{2})[.\/-](\d{2})[.\/-](20\d{2})/);return m?m[3]+'-'+m[2]+'-'+m[1]:null}
+function statementNorm(t){return String(t||'').toLowerCase().replace(/[\s"'.,;:()\-–_]+/g,' ').trim().slice(0,90)}
+function statementTransfer(desc){return /перевод|зачисление перевода|vklad.karta|karta.vklad|branch karta.credit|пополнение|из bank|в t.bank|собственных/i.test(desc)}
+function statementType(row){
+ if(statementTransfer(row.description)||row.transfer)return 'transfer';
+ if(/возврат|отмена оплаты|refund/i.test(row.description))return 'refund';
+ if(row.signed<0)return 'expense';
+ return 'unverified';
+}
+function statementExtractLines(items){
+ let lines=new Map();
+ for(let it of items){let y=Math.round((it.transform?.[5]||0)*2)/2;let current=lines.get(y)||[];current.push({x:it.transform?.[4]||0,s:it.str||''});lines.set(y,current)}
+ return [...lines.entries()].sort((a,b)=>b[0]-a[0]).map(([y,segments])=>segments.sort((a,b)=>a.x-b.x).map(x=>x.s).join('  ').replace(/\s+/g,' ').trim()).filter(Boolean);
+}
+function statementParseWB(lines){
+ let result=[],active=null;
+ for(const line of lines){
+  let m=line.match(/^(\d{2}\.\d{2}\.20\d{2})\s+(\d{2}:\d{2})\s+\d{2}\.\d{2}\.20\d{2}\s+\d+\s+([+-]?\s*[\d ,]+[.,]\d{2})\s*₽/);
+  if(m){
+   if(active)result.push(active);
+   active={date:statementDate(m[1]),time:m[2],signed:statementVal(m[3]),description:'',account:'seed-wb'};
+  }else if(active){
+   if(/^(?:ООО|8 800|Универсальная лицензия|Дата и время|Дата отражения)/i.test(line))continue;
+   active.description+=(active.description?' ':'')+line.slice(0,130);
+  }
+ }
+ if(active)result.push(active);
+ return result.map(x=>({...x,description:/Оплата на Wildberries|Оплата товаров\/услуг|Получатель: ООО "РВБ"/i.test(x.description)?'Оплата Wildberries':/Возврат оплаты/i.test(x.description)?'Возврат Wildberries':/Зачисление перевода/i.test(x.description)?'Зачисление перевода СБП':x.description.slice(0,130)})).filter(x=>x.date&&Number.isFinite(x.signed)&&x.signed!==0);
+}
+function statementParseSber(lines,account){
+ let result=[],active=null;
+ for(const line of lines){
+  let m=line.match(/^(\d{2}\.\d{2}\.20\d{2})\s+(\d{2}:\d{2})\s+(.+?)\s+([+−-]?\s*[\d ]+[.,]\d{2})\s+[\d ]+[.,]\d{2}\s*$/);
+  if(m){
+   if(active)result.push(active);
+   active={date:statementDate(m[1]),time:m[2],signed:statementVal(m[4].replace('−','-')),description:m[3],account};
+   // В выписке Сбербанка расходы показываются без минуса, а приход с плюсом.
+   if(!/^\+/.test(m[4].trim()))active.signed=-Math.abs(active.signed);
+  }else if(active){
+   if(/^(?:\d{2}\.\d{2}\.20\d{2}\s+\d{5,8}|Продолжение|Для проверки|Дата формирования)/.test(line))continue;
+   if(/Операция по|Wildberries|SBERBANK|RAZGULYAJ|Lenta|YARCHE|Сдэк|Перевод|KHLEB|BRISTOL|MAMIN|GRIGORYEVA|Альфа-Банк|Т-Банк/i.test(line))
+     active.description+=' '+line.slice(0,125);
+  }
+ }
+ if(active)result.push(active);
+ return result.filter(x=>x.date&&Number.isFinite(x.signed)&&x.signed!==0);
+}
+function statementParseCSV(t){
+ let lines=t.replace(/^\uFEFF/,'').trim().split(/\r?\n/),sep=lines[0].includes(';')?';':',';
+ const parseLine=line=>{let out=[],str='',quoted=false;for(let i=0;i<line.length;i++){let c=line[i];if(c==='"'){if(quoted&&line[i+1]==='"'){str+='"';i++}else quoted=!quoted}else if(c===sep&&!quoted){out.push(str);str=''}else str+=c}out.push(str);return out};
+ let head=parseLine(lines.shift()).map(h=>h.trim().toLowerCase()),di=head.findIndex(h=>/дата|date/.test(h)),ai=head.findIndex(h=>/сумма|amount/.test(h)),ni=head.findIndex(h=>/описание|назначение|description|merchant/.test(h));
+ if(di<0||ai<0||ni<0)throw Error('В CSV нужны колонки «Дата», «Сумма», «Описание».');
+ return lines.map(l=>parseLine(l)).map(x=>({date:statementDate(x[di]),signed:statementVal(x[ai]),description:String(x[ni]||'').slice(0,200),account:document.getElementById('statementImportAccount')?.value||'seed-sber-6993'})).filter(x=>x.date&&x.signed&&Number.isFinite(x.signed));
+}
+function statementDuplicateCandidates(row){
+ return state.ops.filter(o=>o.date===row.date&&o.account===row.account&&Math.abs(Number(o.amount)-Math.abs(row.signed))<.011);
+}
+function statementIsDuplicate(row){
+ const found=statementDuplicateCandidates(row);
+ if(!found.length)return false;
+ const category=statementType(row);
+ const sameType=found.filter(o=>(o.type===category||category==='unverified'&&o.type==='income'));
+ return sameType.some(o=>{
+  let od=statementNorm(o.description),rd=statementNorm(row.description);
+  if(!od||!rd)return true;
+  if(od===rd||od.includes(rd)||rd.includes(od))return true;
+  if(/wildberries|вайлдберриз|маркетплейсы/.test(od)&&/wildberries|вайлдберриз/.test(rd))return true;
+  if(o.id?.startsWith('archive-')||o.id?.startsWith('seed-'))return true;
+  return false;
+ });
+}
+function cancelStatementImport(){statementPending=[];document.getElementById('statementImportPreview').hidden=true;document.getElementById('statementImportStatus').textContent='Импорт отменён. Данные не изменены.'}
+async function previewStatementImport(){
+ const file=document.getElementById('statementFile').files?.[0],status=document.getElementById('statementImportStatus');
+ if(!file){status.textContent='Сначала выберите выписку.';return}
+ statementPending=[];document.getElementById('statementImportPreview').hidden=true;
+ try{
+ status.textContent='Читаю файл и сверяю с историей…';
+ let rows=[];
+ if(file.name.toLowerCase().endsWith('.csv'))rows=statementParseCSV(await file.text());
+ else if(file.name.toLowerCase().endsWith('.pdf')){
+  if(!window.pdfjsLib){
+   const script=document.createElement('script');
+   script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Не удалось загрузить компонент чтения PDF. Попробуйте CSV.'));document.head.appendChild(script)});
+  }
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+  let pages=[];for(let p=1;p<=pdf.numPages;p++)pages.push(statementExtractLines((await(await pdf.getPage(p)).getTextContent()).items));
+  const first=pages[0].join(' ');
+  if(/ВБ Банк|Справка о движении средств|wb.bank/i.test(first))rows=pages.flatMap(statementParseWB);
+  else if(/Сбер|Выписка по/i.test(first)){
+   const acct=/кредитной карты/i.test(first)?'seed-sber-credit-8611':'seed-sber-3535';
+   rows=pages.flatMap(page=>statementParseSber(page,acct));
+  }else throw Error('Формат PDF банка пока не распознан. Нужен CSV или текстовая выписка Сбера/WB.');
+ }else throw Error('Выберите PDF или CSV.');
+ if(!rows.length)throw Error('Операции не распознаны: возможно, в PDF нет текстового слоя или за выбранный период не было движений.');
+ const unique=new Map(),existing=[];
+ rows.forEach(row=>{
+  row.type=statementType(row);
+  row.description=String(row.description||'Операция по выписке').slice(0,180);
+  row.category=row.type==='expense'?(/wildberries/i.test(row.description)?'Маркетплейсы':/супермаркеты|lenta|y ar che|razgulyaj|хлеб/i.test(row.description)?'Продукты / готовка':'Другое'):'';
+  const key=[row.date,row.account,row.signed,statementNorm(row.description)].join('|');
+  if(unique.has(key)||statementIsDuplicate(row))existing.push(row);else unique.set(key,row);
+ });
+ statementPending=[...unique.values()];
+ status.textContent='Найдено строк: '+rows.length+'. Пропущены совпадения: '+existing.length+'.';
+ document.getElementById('statementImportSummary').textContent='К добавлению: '+statementPending.length+' (включая переводы, которые не попадут в расходы).';
+ document.getElementById('statementImportRows').innerHTML=statementPending.slice(0,100).map(x=>'<div class="import-row"><span>'+esc(x.date)+'</span><span>'+esc(x.description)+'<br><small>'+esc(x.type==='expense'?'Расход':x.type==='transfer'?'Перевод':x.type==='refund'?'Возврат':'Требует проверки')+'</small></span><b>'+esc(String(x.signed))+' ₽</b></div>').join('')+(statementPending.length>100?'<p>Показаны первые 100 записей.</p>':'');
+ document.getElementById('statementImportPreview').hidden=false;
+ }catch(e){status.textContent='Не удалось разобрать выписку: '+(e?.message||e)}
+}
+function confirmStatementImport(){
+ if(!statementPending.length){alert('Новых операций нет');return}
+ let added=0;
+ for(let x of statementPending){
+  if(statementIsDuplicate(x))continue;
+  state.ops.push({id:'statement-'+Date.now().toString(36)+'-'+added+'-'+Math.random().toString(36).slice(2,7),date:x.date,type:x.type,amount:Math.abs(x.signed),account:x.account,description:x.description,category:x.category,imported:true,importSource:'bank_statement_upload',userReviewed:false});
+  added++;
+ }
+ statementPending=[];document.getElementById('statementImportPreview').hidden=true;
+ save();document.getElementById('statementImportStatus').textContent='Сохранено '+added+' новых операций в этом браузере. Создайте резервную копию JSON в настройках.';
+}
+
 </script></body></html>
