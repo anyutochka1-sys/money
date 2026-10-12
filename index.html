@@ -229,6 +229,7 @@ if(!state.accounts.some(a=>/яндекс\s*(пэй|pay)/i.test(a.name))){state.a
  ];
  for(const d of debts){const current=state.debts.find(x=>x.name===d.name);if(!current){state.debts.push(d)}else if(!current.balanceDate&&cents(current.principal)===cents(d.principal)&&cents(current.interest)===cents(d.interest)){current.balanceDate=d.balanceDate}}
  const ops=[
+ {id:'confirmed-yandex-kids-20261012-199',date:'2026-10-12',type:'expense',account:'seed-sber-credit-8611',amount:199,category:'Подписки',subcategory:'Яндекс Дети',itemName:'Подписка Яндекс Дети',description:'Яндекс Дети · подписка',confirmedByUser:true,userReviewed:true},
  {id:'seed-yarche-1010',date:'2026-10-10',type:'expense',account:'seed-sber-6993',amount:4990.92,category:'Продукты / готовка',description:'Ярче · продукты (чек уже учтён в выписке)'},
  {id:'seed-lenta-1010',date:'2026-10-10',type:'expense',account:'seed-sber-6993',amount:498.95,category:'Продукты / готовка',description:'Лента · товары из чека',items:[{name:'Листовой салат',price:27.65,category:'Продукты / готовка'},{name:'Яйца Белоречье, 10 шт.',price:92.14,category:'Продукты / готовка'},{name:'Творог Савушкин Нежный, 10 шт.',price:318.92,category:'Продукты / готовка'},{name:'Лаваш, 300 г',price:60.24,category:'Продукты / готовка'}]},
  {id:'seed-razgulyai-1011',date:'2026-10-11',type:'expense',account:'seed-sber-6993',amount:324.97,category:'Продукты / готовка',description:'Разгуляй · продукты и сладости',items:[{name:'Приправа Maggi для плова',price:59,category:'Продукты / готовка'},{name:'Шоколад Ritter Sport с фисташкой',price:199,category:'Сладости'},{name:'Шоколад Победа горький',price:66.97,category:'Сладости'}]},
@@ -535,18 +536,20 @@ function quickMode(mode){
  $('quickAttachmentLabel').classList.toggle('hidden',mode==='transfer');
 }
 function renderQuickForm(){
- const source=document.getElementById('quickAccount'),dest=document.getElementById('quickDestination'),date=document.querySelector('#quickForm input[name="date"]');
+ const source=$('quickAccount'),dest=$('quickDestination'),date=document.querySelector('#quickForm input[name="date"]');
  if(!source||!dest)return;
- const previous=source.value,previousDest=dest.value;
  const accounts=state.accounts.filter(a=>a&&a.id);
- source.replaceChildren(new Option('Выберите карту или счёт', ''));
- dest.replaceChildren(new Option('Выберите счёт получения', ''));
- for(const a of accounts){
-  source.add(new Option(a.name,a.id));
-  dest.add(new Option(a.name,a.id));
+ function updateSelect(select,placeholder){
+  const ids=['',...accounts.map(a=>a.id)];
+  const actual=Array.from(select.options).map(x=>x.value);
+  if(ids.length===actual.length&&ids.every((id,i)=>id===actual[i]))return;
+  const previous=select.value;
+  select.replaceChildren(new Option(placeholder,''));
+  for(const a of accounts)select.add(new Option(a.name,a.id));
+  if(accounts.some(a=>a.id===previous))select.value=previous;
  }
- if(accounts.some(a=>a.id===previous))source.value=previous;
- if(accounts.some(a=>a.id===previousDest))dest.value=previousDest;
+ updateSelect(source,'Выберите карту или счёт');
+ updateSelect(dest,'Выберите счёт получения');
  if(date&&!date.value)date.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 }
 function saveQuick(event){
