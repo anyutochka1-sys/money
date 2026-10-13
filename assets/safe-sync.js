@@ -13,13 +13,14 @@
   const money = n => Math.round(Number(n) * 100);
   function readPayload(json) {
     const p = typeof json === 'string' ? JSON.parse(json) : json;
-    if (!p || p.schema !== SCHEMA || !Array.isArray(p.operations) || p.operations.length > 5000) throw Error('Формат файла не распознан. Нужен экспорт money-review-v1.');
+    if (!p || ![SCHEMA,'money-candidates-v2'].includes(p.schema) || !Array.isArray(p.operations) || p.operations.length > 5000) throw Error('Формат файла не распознан. Нужен экспорт money-review-v1.');
     const used = new Set(), ops = [];
     for (const raw of p.operations) {
       if (!raw || typeof raw !== 'object' || !raw.id || String(raw.id).length > 150 || !/^20\d\d-\d\d-\d\d$/.test(raw.date || '') ||
           !Number.isFinite(money(raw.amount)) || money(raw.amount) <= 0 || money(raw.amount) > 100000000000 ||
           !['Поступление', 'Списание'].includes(raw.direction) || raw.status !== 'REVIEW') throw Error('Повреждённая операция в файле. Импорт остановлен.');
       const id = String(raw.id);
+      const date=new Date(raw.date+'T12:00:00Z');if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==raw.date)throw Error('Неверная дата операции.');
       if (used.has(id)) throw Error('В файле повторяются идентификаторы операций. Импорт остановлен.');
       used.add(id);
       const max = (v, n) => String(v == null ? '' : v).slice(0, n);
@@ -28,7 +29,7 @@
         amount: money(raw.amount) / 100, direction: raw.direction,
         description: max(raw.description, 240), category: max(raw.category, 90),
         handling: max(raw.handling, 90), confidence: max(raw.confidence, 40),
-        reviewStatus: 'pending', schema: SCHEMA
+        reviewStatus: 'pending', schema: SCHEMA, status:'REVIEW',risk:max(raw.risk,150),sourceFile:max(raw.sourceFile,150),note:max(raw.note,500)
       });
     }
     return ops;
@@ -84,7 +85,8 @@
     if (!settings || doc.getElementById('moneySafeSync')) return;
     const el = (tag, cls, content) => {const n = doc.createElement(tag);if (cls) n.className = cls;if(content !== undefined)n.textContent = content;return n;};
     const sec = el('div', 'card money-review-card'); sec.id = 'moneySafeSync';
-    sec.appendChild(el('h2', '', 'Сверка с Google Диском'));
+    sec.appendChild(el('h2', '', 'Проверка кандидатов с Google Диска'));
+    const engine=win.MoneyCandidateEngine;if(!engine){sec.appendChild(el('p','','Модуль сверки не загрузился. Запись заблокирована.'));settings.appendChild(sec);return;}
     sec.appendChild(el('p', '', 'Загрузите приватный экспорт из таблицы. Сайт покажет операции для проверки и не изменит текущие остатки, кредиты или расходы.'));
     const actions = el('div', 'money-review-actions');
     const input = el('input'); input.type = 'file'; input.accept = '.json,application/json';input.id = 'moneyReviewFile';
@@ -105,6 +107,12 @@
     let candidates = null, visible = 24;
     const storageRead = () => {try {const a = JSON.parse(win.localStorage.getItem(STORE) || '[]');return Array.isArray(a)?a:[]} catch(e){return []}};
     const storageSave = list => win.localStorage.setItem(STORE,JSON.stringify(list));
+    const stateKey='money_personal_v1';
+    const persisted=()=>win.localStorage.getItem(stateKey);
+    function guardFresh(){if(persisted()!==JSON.stringify(state)){if(persisted()){win.alert('История изменена в другой вкладке. Перезагрузите сайт перед подтверждением.');return false;}}return true}
+    let undo=null;
+    const undoButton=el('button','secondary','Отменить последний перенос');undoButton.type='button';undoButton.hidden=true;actions.appendChild(undoButton);
+    undoButton.onclick=()=>{if(!undo)return;if(persisted()!==undo.afterState||win.localStorage.getItem(STORE)!==undo.afterQueue){win.alert('После переноса были другие изменения. Автоматический откат остановлен; резервная копия сохранена.');return;}if(!win.confirm('Отменить только последний перенос?'))return;win.localStorage.setItem(stateKey,undo.beforeState);win.localStorage.setItem(STORE,undo.beforeQueue);state=JSON.parse(undo.beforeState);undo=null;undoButton.hidden=true;if(typeof render==='function')render();refresh();};
     const actualOps = () => typeof state === 'undefined' ? [] : state.ops;
     function rowsForView(){let a=storageRead(); if(select.value==='expense')a=a.filter(x=>x.handling==='Расход после проверки');
       else if(select.value==='transfer')a=a.filter(x=>/Не учитывать|перевод/i.test(x.handling+' '+x.category));
@@ -112,31 +120,39 @@
       else if(select.value==='other')a=a.filter(x=>/возврат|займ|кредит/i.test(x.category));
       return a.slice().sort((a,b)=>b.date.localeCompare(a.date));}
     function refresh(){const all=storageRead(),s=stats(all);summary.textContent=`В очереди: ${s.all} • ожидают: ${s.pending} • подтверждено: ${s.reviewed} • исключено: ${s.ignored} • вероятные покупки: ${s.expenses}`;
+      const classifications=all.map(x=>{try{return engine.analyze(x,state,all).kind}catch(_){return 'invalid'}});const counts={};classifications.forEach(k=>counts[k]=(counts[k]||0)+1);summary.textContent+=' • совпадений по ID: '+(counts.existing||0)+' • сомнительных: '+((counts.ambiguous||0)+(counts.risk||0))+' • неизвестный счёт: '+(counts.unknown||0);
       list.replaceChildren();const filtered=rowsForView();for(const x of filtered.slice(0,visible)) {
         const card=el('div','money-review-row'),top=el('strong','',`${x.date} · ${x.bank} · ${x.amount.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})} ₽`);
         card.appendChild(top);card.appendChild(el('small','',x.description || 'Назначение не определено'));
         card.appendChild(el('span','money-review-badge',x.category));card.appendChild(el('span','money-review-badge',x.reviewStatus==='confirmed'?'Подтверждено':x.reviewStatus==='ignored'?'Не учитывать':'Требует проверки'));
+        const audit=engine.analyze(x,state,all);card.appendChild(el('small','',audit.reason));card.appendChild(el('small','','Банковский ID: '+x.id+' · счёт: '+(x.accountHint||'не указан')));
+        if(audit.matches.length){const matches=el('details');matches.appendChild(el('summary','','Сравнить с '+audit.matches.length+' записями истории'));for(const op of audit.matches)matches.appendChild(el('p','',op.date+' · '+(op.description||op.category||op.type)+' · '+op.amount+' ₽ · ID '+op.id));card.appendChild(matches)}
         if(x.reviewStatus === 'pending') {const btns=el('div','btns');
-          if(x.handling==='Расход после проверки') {const approve=el('button','secondary','Подтвердить покупку');approve.type='button';approve.addEventListener('click',()=>confirmExpense(x.id));btns.appendChild(approve);}
+          if(x.handling==='Расход после проверки') {const approve=el('button','secondary','Подтвердить покупку');approve.type='button';const needsCheck=audit.kind==='risk'||(audit.kind==='ambiguous'&&audit.canConfirmDistinct);let check=null;if(needsCheck){const label=el('label','','Я сравнила историю и выписку: это отдельная покупка');check=el('input');check.type='checkbox';check.style.width='auto';label.prepend(check);card.appendChild(label);approve.disabled=true;check.onchange=()=>approve.disabled=!check.checked}else approve.disabled=audit.kind!=='new';approve.addEventListener('click',()=>confirmExpense(x.id,Boolean(check&&check.checked)));btns.appendChild(approve);
+          if(audit.kind==='existing'||audit.kind==='ambiguous'){const exists=el('button','secondary','Уже учтено · не добавлять');exists.type='button';exists.onclick=()=>{if(!win.confirm('Оставить текущую историю без изменений и отметить кандидата как уже учтённого?'))return;const queue=storageRead(),f=queue.find(o=>o.id===x.id);f.reviewStatus='ignored';f.reviewDecision='already_in_history';storageSave(queue);refresh()};btns.appendChild(exists)}}
           const ignore=el('button','secondary','Не учитывать');ignore.type='button';ignore.addEventListener('click',()=>ignoreRecord(x.id));btns.appendChild(ignore);card.appendChild(btns);
         }list.appendChild(card)}
       show.hidden=filtered.length<=visible;}
     function ignoreRecord(id){const queue=storageRead(),found=queue.find(x=>x.id===id);if(!found||found.reviewStatus!=='pending')return;
       if(!win.confirm('Пометить операцию как исключённую из очереди? Существующие данные бюджета не изменятся.'))return;
       found.reviewStatus='ignored';storageSave(queue);refresh();}
-    function confirmExpense(id){const queue=storageRead(),found=queue.find(x=>x.id===id);if(!found||found.handling!=='Расход после проверки'||found.reviewStatus!=='pending')return;
-      const ac=accountId(found);if(!ac||typeof state==='undefined'||!state.accounts.some(a=>a.id===ac)){win.alert('Не найден однозначный счёт для покупки. Подтверждение остановлено.');return;}
-      const overlaps=possibleOverlap(found,actualOps());if(overlaps.length){win.alert('В истории уже есть операция с такой датой, счётом и суммой. Нужна ручная сверка, чтобы не задвоить покупку.');return;}
-      if(!win.confirm(`Учесть ${found.amount.toLocaleString('ru-RU')} ₽ как расход «${found.category}» за ${found.date}?`))return;
-      const backupKey='money_before_sync_review_'+(new Date()).toISOString().slice(0,10);
-      try {if(!win.localStorage.getItem(backupKey))win.localStorage.setItem(backupKey,JSON.stringify(state));}catch(e){win.alert('Не удалось сохранить резервную копию в браузере. Операция отменена.');return;}
-      const op={id:'review-'+found.id,sourceOperationId:found.id,date:found.date,account:ac,type:'expense',amount:found.amount,description:found.description,category:found.category,imported:true,userReviewed:true,confirmedByUser:true,needsReview:false,importSource:'private_google_drive_review'};
-      state.ops.push(op);try{win.localStorage.setItem('money_personal_v1',JSON.stringify(state));found.reviewStatus='confirmed';storageSave(queue);if(typeof render==='function')render();if(typeof renderHistory==='function')renderHistory();refresh();}
-      catch(e){state.ops=state.ops.filter(v=>v.id!==op.id);win.alert('Ошибка сохранения: '+e.message+'; изменения отменены.');}
+    function confirmExpense(id,acknowledged){
+      if(!guardFresh())return;
+      const queue=storageRead(),found=queue.find(x=>x.id===id);if(!found||found.reviewStatus!=='pending')return;
+      let merged;try{merged=engine.mergeOne(state,found,queue,acknowledged)}catch(e){win.alert(e.message);return;}
+      if(!merged.added){status.textContent='Операция уже есть. История не менялась.';return;}
+      if(!win.confirm('Записать отдельную покупку '+found.amount.toLocaleString('ru-RU')+' ₽ за '+found.date+'? Контрольные остатки и кредиты не изменятся.'))return;
+      const beforeState=JSON.stringify(state),beforeQueue=JSON.stringify(queue);
+      const backup={state,reviewQueue:queue,customCategories:JSON.parse(win.localStorage.getItem('money_custom_categories_v1')||'{}'),createdAt:new Date().toISOString()};
+      const backupKey='money_before_review_'+Date.now();
+      try{win.localStorage.setItem(backupKey,JSON.stringify(backup))}catch(e){win.alert('Не удалось сохранить резервную копию. Перенос отменён.');return;}
+      found.reviewStatus='confirmed';const afterState=JSON.stringify(merged.state),afterQueue=JSON.stringify(queue);
+      try{win.localStorage.setItem(stateKey,afterState);win.localStorage.setItem(STORE,afterQueue);state=merged.state;undo={beforeState,beforeQueue,afterState,afterQueue};undoButton.hidden=false;if(typeof render==='function')render();if(typeof renderHistory==='function')renderHistory();refresh();status.textContent='Добавлена одна подтверждённая покупка. Резервная копия сохранена.';}
+      catch(e){try{win.localStorage.setItem(stateKey,beforeState);win.localStorage.setItem(STORE,beforeQueue);state=JSON.parse(beforeState)}catch(rollback){win.alert('Ошибка отката. Не продолжайте перенос: используйте резервную копию '+backupKey);return;}win.alert('Ошибка записи. Исходная история восстановлена: '+e.message);}
     }
     preview.addEventListener('click', async()=>{store.disabled=true;candidates=null;try {const f=input.files?.[0];if(!f)throw Error('Выберите приватный JSON-файл.');if(f.size>9000000)throw Error('Файл слишком большой.');
-      const parsed=readPayload(await f.text()),now=storageRead(),result=mergeQueue(now,parsed);
-      candidates=parsed;store.disabled=false;status.textContent=`Проверено ${parsed.length} записей. Новых для очереди: ${result.added}. Уже в очереди: ${result.existing}. Бюджет не менялся.`;
+      const parsed=readPayload(await f.text()),now=storageRead(),result=mergeQueue(now,parsed);const audits=parsed.map(x=>engine.analyze(x,state,parsed));const count=k=>audits.filter(a=>a.kind===k).length;
+      candidates=parsed;store.disabled=false;status.textContent=`Проверено ${parsed.length} записей. Новых для очереди: ${result.added}. Уже в очереди: ${result.existing}. Совпадения по банковскому ID: ${count('existing')}; возможные повторы: ${count('ambiguous')}; ручная проверка: ${count('risk')}; неизвестный счёт: ${count('unknown')}. Бюджет не менялся.`;
     }catch(e){status.textContent='Не удалось проверить файл: '+e.message;}});
     store.addEventListener('click',()=>{if(!candidates)return;try{const current=storageRead(),merged=mergeQueue(current,candidates);storageSave(merged.rows);status.textContent=`Сохранено новых для проверки: ${merged.added}. Уже были: ${merged.existing}. Доходы, расходы и остатки не изменены.`;store.disabled=true;candidates=null;refresh();}catch(e){status.textContent='Ошибка сохранения: '+e.message}});
     select.addEventListener('change',()=>{visible=24;refresh()});show.addEventListener('click',()=>{visible+=30;refresh()});refresh();
