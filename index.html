@@ -344,7 +344,7 @@ function debtBalance(d){
  let p=cents(d.principal),i=cents(d.interest);
  const isCard=/кредитная сберкарта.*8611/i.test(d.name);
  for(const o of state.ops){
-  if(o.imported||(d.balanceDate&&o.date<=d.balanceDate))continue;
+  if((o.imported&&!o.applyToBalance)||(d.balanceDate&&o.date<=d.balanceDate))continue;
   if(isCard&&o.account==='seed-sber-credit-8611'){
    if(o.type==='expense')p+=cents(o.amount);
    else if(o.type==='refund')p-=cents(o.amount);
@@ -353,7 +353,7 @@ function debtBalance(d){
  }
  return {principal:Math.max(0,p)/100,interest:Math.max(0,i)/100};
 }
-function balance(a){let base=cents(a.balance);for(const o of state.ops){if(o.imported||(a.balanceDate&&o.date<=a.balanceDate))continue;const v=cents(o.amount);if(o.type==='transfer'){if(o.account===a.id)base-=v;if(o.destination===a.id)base+=v;}else if(o.account===a.id){if(o.type==='income'||o.type==='family'||o.type==='refund')base+=v;else if(o.type==='expense'||o.type==='debt')base-=v;/* Неуточнённые и исключённые записи не меняют доступный остаток. */}}return base/100}
+function balance(a){let base=cents(a.balance);for(const o of state.ops){if((o.imported&&!o.applyToBalance)||(a.balanceDate&&o.date<=a.balanceDate))continue;const v=cents(o.amount);if(o.type==='transfer'){if(o.account===a.id)base-=v;if(o.destination===a.id)base+=v;}else if(o.account===a.id){if(o.type==='income'||o.type==='family'||o.type==='refund')base+=v;else if(o.type==='expense'||o.type==='debt')base-=v;/* Неуточнённые и исключённые записи не меняют доступный остаток. */}}return base/100}
 function isSavingsAccount(a){return /накоп|сбереж|вклад|резерв/i.test(String(a.kind||'')+' '+String(a.name||''))}
 function isCreditAccount(a){return /кредитная карта/i.test(String(a.kind||''))}
 function isVerifiedAccount(a){return !a.needsReconciliation||!!a.balanceDate}
@@ -1236,4 +1236,4 @@ function confirmStatementImport(){
  const latest=document.getElementById('homeLatestCard');
  if(latest&&!latest.querySelector('.home-mini-link'))latest.insertAdjacentHTML('beforeend','<button class="secondary home-mini-link" type="button" onclick="goto(\'history\')">Вся история →</button>');
 })();
-</script><script defer src="./assets/safe-sync.js?v=20261013"></script></body></html>
+</script><script src="./assets/candidate-engine.js"></script><script defer src="./assets/safe-sync.js?v=20261013-review"></script></body></html>
