@@ -995,7 +995,7 @@ async function importRecentArchive(path='./data/statement-sep-oct-2026.gz.b64',p
  let date='2026-'+x[0].slice(0,2)+'-'+x[0].slice(2),type=types[x[3]],accountName=p.accounts[x[2]],account=map[accountName]||'',amount=x[1]/100;
  if(type==='expense'&&state.ops.some(o=>o.id?.startsWith('seed-')&&o.type==='expense'&&o.date===date&&o.account===account&&Math.abs(o.amount-amount)<.005))return;
  state.ops.push({id,date,type,account,accountName,amount,category:p.categories[x[4]],description:x[5],imported:true,transferDirection:type==='transfer'?(/^\s*(?:перевод|пополнение|зачисление)\s*\+/i.test(x[5])?1:/^\s*(?:перевод|списание)\s*[-−]/i.test(x[5])?-1:null):null,needsReview:type==='unverified'||type==='transfer',sourceFile:'Сверка 2026'});added++});
- if(added)localStorage.setItem(KEY,JSON.stringify(state));correctConfirmedOctoberExpenses();const paired=reconcileOwnTransfers();if(added||paired||categorized){render();renderHistory()}
+ if(added)localStorage.setItem(KEY,JSON.stringify(state));correctConfirmedOctoberExpenses();const paired=reconcileOwnTransfers();if(added||paired){render();renderHistory()}
  $(statusId).textContent+=(prefix==='archive-so-'?' Сентябрь–октябрь: ':' Дополнительный архив: ')+p.operations.length+' строк, добавлено '+added+'; переводы отделены от расходов.';
  }catch(e){$(statusId).textContent+=' Ошибка архива: '+e.message}
 }
