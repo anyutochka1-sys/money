@@ -1,7 +1,7 @@
 /**
  * \u041c\u041e\u0418 \u0424\u0418\u041d\u0410\u041d\u0421\u042b. \u0418\u043c\u043f\u043e\u0440\u0442 \u0447\u0435\u043a\u043e\u0432 \u0438 \u0441\u0432\u0435\u0440\u043a\u0430 \u0431\u0430\u043d\u043a\u043e\u0432\u0441\u043a\u0438\u0445 \u0432\u044b\u043f\u0438\u0441\u043e\u043a.
  * Apps Script + Google Drive + Google Sheets, \u0431\u0435\u0437 \u043f\u0443\u0431\u043b\u0438\u043a\u0430\u0446\u0438\u0438 \u0431\u0430\u043d\u043a\u043e\u0432\u0441\u043a\u0438\u0445 \u0434\u0430\u043d\u043d\u044b\u0445.
- * \u0412\u0435\u0440\u0441\u0438\u044f 2.4 (\u0437\u0430\u0449\u0438\u0442\u0430 \u043e\u0442 \u043f\u043e\u0432\u0442\u043e\u0440\u043d\u044b\u0445 \u0432\u043a\u043b\u0430\u0434\u043e\u043a \u0438 \u0438\u0441\u043a\u0430\u0436\u0451\u043d\u043d\u043e\u0439 \u043a\u043e\u0434\u0438\u0440\u043e\u0432\u043a\u0438). \u041f\u0440\u0438 \u0440\u0430\u0431\u043e\u0442\u0435 \u0441 \u043d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u043c \u0444\u043e\u0440\u043c\u0430\u0442\u043e\u043c \u0432\u044b\u043f\u0438\u0441\u043a\u0438 \u0437\u0430\u043f\u0438\u0441\u0438 \u043e\u0441\u0442\u0430\u044e\u0442\u0441\u044f \u043d\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443.
+ * \u0412\u0435\u0440\u0441\u0438\u044f 2.7 (\u0437\u0430\u0449\u0438\u0442\u0430 \u043e\u0442 \u043f\u043e\u0432\u0442\u043e\u0440\u043d\u044b\u0445 \u0432\u043a\u043b\u0430\u0434\u043e\u043a \u0438 \u0438\u0441\u043a\u0430\u0436\u0451\u043d\u043d\u043e\u0439 \u043a\u043e\u0434\u0438\u0440\u043e\u0432\u043a\u0438). \u041f\u0440\u0438 \u0440\u0430\u0431\u043e\u0442\u0435 \u0441 \u043d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u043c \u0444\u043e\u0440\u043c\u0430\u0442\u043e\u043c \u0432\u044b\u043f\u0438\u0441\u043a\u0438 \u0437\u0430\u043f\u0438\u0441\u0438 \u043e\u0441\u0442\u0430\u044e\u0442\u0441\u044f \u043d\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443.
  */
 const CONFIG = Object.freeze({
   receiptsFolder: '1fpJgRM7uL_ST2sOcmjtExLzKIbP4H1G3',
@@ -46,7 +46,7 @@ function scanNewReceipts(){runAll()}
 function scanNewStatements(){runAll()}
 function monthlyReconcile(){runAll()}
 function installHourlyTrigger(){setupOnce()}
-function removeTriggers_(fn){ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===fn).forEach(ScriptApp.deleteTrigger)}
+function removeTriggers_(fn){ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===fn).forEach(t=>ScriptApp.deleteTrigger(t))}
 function ensureSheet_(b,name){
  const canonical={'\u0427\u0435\u043a\u0438':407484829,'\u041f\u043e\u0437\u0438\u0446\u0438\u0438 \u0442\u043e\u0432\u0430\u0440\u043e\u0432':937789504,'\u0412\u044b\u043f\u0438\u0441\u043a\u0438':442132535,'\u041e\u043f\u0435\u0440\u0430\u0446\u0438\u0438 \u0432\u044b\u043f\u0438\u0441\u043e\u043a':941385548,'\u0421\u0432\u0435\u0440\u043a\u0430':1996303993,'\u0416\u0443\u0440\u043d\u0430\u043b':915108791};
  const byId=b.getSheets().find(sh=>sh.getSheetId()===canonical[name]);
@@ -176,17 +176,17 @@ function statementCandidates_(raw,bank){
  // Sberbank payment account: line with operation datetime, category, amount,
  // running balance, followed by processing date, authorization code and description.
  // No guessing from statement totals, headers, address or account balances.
- else if(/www\.sberbank\.ru/i.test(text) && /Расшифровка операций/.test(text)){
-  const body=text.slice(text.indexOf('Расшифровка операций'));
+ else if(/www\.sberbank\.ru/i.test(text) && /\u0420\u0430\u0441\u0448\u0438\u0444\u0440\u043e\u0432\u043a\u0430 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439/.test(text)){
+  const body=text.slice(text.indexOf('\u0420\u0430\u0441\u0448\u0438\u0444\u0440\u043e\u0432\u043a\u0430 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439'));
   const re=/(?:^|\n)\s*(\d{2}\.\d{2}\.20\d{2})\s+(\d{2}:\d{2})\s+([^\n\d]{3,60}?)\s+(\+?[\d\s\u00a0]+,\d{2})\s+([\d\s\u00a0]+,\d{2})\s+(\d{2}\.\d{2}\.20\d{2})\s+(\d{6})\s+([^\n]+)/g;
   let m;
   while((m=re.exec(body))!==null){
    const value=num_(m[4]);
    if(!Number.isFinite(value)||!value)continue;
    const description=m[8].trim(),category=m[3].trim();
-   if(description.length<6 || /Остаток на|ИТОГО ПО ОПЕРАЦИЯМ|За период/i.test(description))continue;
+   if(description.length<6 || /\u041e\u0441\u0442\u0430\u0442\u043e\u043a \u043d\u0430|\u0418\u0422\u041e\u0413\u041e \u041f\u041e \u041e\u041f\u0415\u0420\u0410\u0426\u0418\u042f\u041c|\u0417\u0430 \u043f\u0435\u0440\u0438\u043e\u0434/i.test(description))continue;
    const signed=String(m[4]).trim().startsWith('+')?Math.abs(value):-Math.abs(value);
-   parsed.push({date:date_(m[1]),time:m[2]+':00',externalId:m[7],signed,description:category+' · '+description});
+   parsed.push({date:date_(m[1]),time:m[2]+':00',externalId:m[7],signed,description:category+' \u00b7 '+description});
   }
  }
  // VTB account statement: two dates, signed amount, incoming and outgoing columns.
@@ -288,13 +288,44 @@ function storedSourceHint_(r){
  const note=String(r[10]||''),b=bankToken_(r[3],r[4]);
  let t=(note.match(/\u0412\u0440\u0435\u043c\u044f (\d{2}:\d{2}(?::\d{2})?)/)||note.match(/(?:^|[; ])(\d{2}:\d{2}(?::\d{2})?)(?: \u041c\u0421\u041a|;|$)/)||[])[1]||'';
  const ext=(note.match(/\u043a\u043e\u0434 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430 (\d+)/)||note.match(/\u043a\u043e\u0434 (\d+)/)||[])[1]||'';
- return {date:String(r[2]||''),time:t,externalId:ext,signed:signedFromStored_(r),description:String(r[7]||'')};
+ return {date:normalizedBankDate_(r[2]),time:t,externalId:ext,signed:signedFromStored_(r),description:String(r[7]||'')};
+}
+/**
+ * The same source PDF can be reparsed with a different hash than was used
+ * by an earlier version. Count indistinguishable rows in that SAME source,
+ * so a second parse cannot append those rows again. The count, rather than
+ * a boolean, preserves two separate purchases with the same description,
+ * amount and day. Cross-document overlap is handled by naturalBankKey_.
+ */
+/** Normalize Sheets Date objects, numeric serials and ISO dates to one calendar date. */
+function normalizedBankDate_(value){
+ if(value instanceof Date || Object.prototype.toString.call(value)==='[object Date]'){
+  if(!Number.isFinite(value.getTime()))return '';
+  return Utilities.formatDate(value,CONFIG.timezone,'yyyy-MM-dd');
+ }
+ if(typeof value==='number' && Number.isFinite(value) && value>35000 && value<80000){
+  return new Date(Date.UTC(1899,11,30)+Math.round(value)*86400000).toISOString().slice(0,10);
+ }
+ const v=String(value==null?'':value).trim();
+ if(/^20\d\d-\d\d-\d\d$/.test(v))return v;
+ const m=v.match(/^([0-3]\d)[.\/-]([01]\d)[.\/-](20\d\d)$/);
+ if(m)return m[3]+'-'+m[2]+'-'+m[1];
+ return '';
+}
+function sourceOperationKey_(fileId,date,bank,account,type,amount,description){
+ const n=num_(amount);
+ const fixedDate=normalizedBankDate_(date);
+ if(!fileId||!fixedDate||!bank||!Number.isFinite(n))return '';
+ return [String(fileId),fixedDate,bankToken_(bank),norm_(account),norm_(type),Math.round(Math.abs(n)*100),norm_(description)].join('|');
 }
 /** Idempotent import: compare actual bank operations, including older manually imported rows. */
 function importParsedStatementRows_(book,statementRows){
  const out=book.getSheetByName('\u041e\u043f\u0435\u0440\u0430\u0446\u0438\u0438 \u0432\u044b\u043f\u0438\u0441\u043e\u043a');
  const old=rows_(out,11), existingIds=new Set(old.map(r=>String(r[0]))),known=new Set(),legacyCounts=new Map(),legacyWbNoAccount=new Map();
+ const sourceExisting=new Map(),sourceEncountered=new Map();
  for(const r of old){
+  const sourceKey=sourceOperationKey_(r[1],r[2],r[3],r[4],r[5],r[6],r[7]);
+  if(sourceKey)sourceExisting.set(sourceKey,(sourceExisting.get(sourceKey)||0)+1);
   const hint=storedSourceHint_(r),key=naturalBankKey_(r[3],r[4],hint);
   if(key)known.add(key);
   else if(hint.time){
@@ -311,6 +342,17 @@ function importParsedStatementRows_(book,statementRows){
   for(const x of candidates){
    const key=naturalBankKey_(bank,account,x);
    if(!key){continue} // Unknown identity is held for review; do not invent duplicates.
+   // Classify BEFORE checking preexisting source rows: older records may have
+   // other hashes but still describe the exact same bank operation.
+   const isRefund=/\u0412\u043e\u0437\u0432\u0440\u0430\u0442 Wildberries/i.test(x.description);
+   const transfer=/\u043f\u0435\u0440\u0435\u0432\u043e\u0434|\u043f\u043e\u043f\u043e\u043b\u043d\u0435\u043d|\u0441\u043e\u0431\u0441\u0442\u0432\u0435\u043d\u043d.*\u0441\u0440\u0435\u0434\u0441\u0442\u0432|SBERBANK ONL@IN|\u041e\u0437\u043e\u043d \u0411\u0430\u043d\u043a|Wildberries \(\u0412\u0430\u0439\u043b\u0434\u0431\u0435\u0440\u0440\u0438\u0437 \u0411\u0430\u043d\u043a\)/i.test(x.description);
+   const type=isRefund?'\u0412\u041e\u0417\u0412\u0420\u0410\u0422_\u041f\u0420\u041e\u0412\u0415\u0420\u0418\u0422\u042c':(bankKind==='wb' && x.signed>0)||transfer?'\u041f\u0415\u0420\u0415\u0412\u041e\u0414_\u041f\u0420\u041e\u0412\u0415\u0420\u0418\u0422\u042c':x.signed<0?'\u0421\u041f\u0418\u0421\u0410\u041d\u0418\u0415_\u041f\u0420\u041e\u0412\u0415\u0420\u0418\u0422\u042c':'\u041f\u041e\u0421\u0422\u0423\u041f\u041b\u0415\u041d\u0418\u0415_\u041f\u0420\u041e\u0412\u0415\u0420\u0418\u0422\u042c';
+   const srcKey=sourceOperationKey_(fileId,x.date,bank,account,type,Math.abs(x.signed),x.description);
+   const ordinal=(sourceEncountered.get(srcKey)||0)+1;
+   sourceEncountered.set(srcKey,ordinal);
+   if(srcKey && ordinal<=(sourceExisting.get(srcKey)||0)){
+    known.add(key); duplicates++; continue;
+   }
    if(known.has(key)){duplicates++;continue}
    if(x.idOverride && existingIds.has(x.idOverride)){known.add(key);duplicates++;continue}
    const bareKey=['wb',x.date,String(x.time).slice(0,5),Math.round(x.signed*100)].join('|');
@@ -321,9 +363,6 @@ function importParsedStatementRows_(book,statementRows){
    if(existingIds.has(id)){known.add(key);duplicates++;continue}
    known.add(key);existingIds.add(id);
    // Payments and own-account transfers are not merged or applied to the website.
-   const isRefund=/\u0412\u043e\u0437\u0432\u0440\u0430\u0442 Wildberries/i.test(x.description);
-   const transfer=/\u043f\u0435\u0440\u0435\u0432\u043e\u0434|\u043f\u043e\u043f\u043e\u043b\u043d\u0435\u043d|\u0441\u043e\u0431\u0441\u0442\u0432\u0435\u043d\u043d.*\u0441\u0440\u0435\u0434\u0441\u0442\u0432|SBERBANK ONL@IN|\u041e\u0437\u043e\u043d \u0411\u0430\u043d\u043a|Wildberries \(\u0412\u0430\u0439\u043b\u0434\u0431\u0435\u0440\u0440\u0438\u0437 \u0411\u0430\u043d\u043a/i.test(x.description);
-   const type=isRefund?'\u0412\u041e\u0417\u0412\u0420\u0410\u0422_\u041f\u0420\u041e\u0412\u0415\u0420\u0418\u0422\u042c':(bankKind==='wb' && x.signed>0)||transfer?'\u041f\u0415\u0420\u0415\u0412\u041e\u0414_\u041f\u0420\u041e\u0412\u0415\u0420\u0418\u0422\u042c':x.signed<0?'\u0421\u041f\u0418\u0421\u0410\u041d\u0418\u0415_\u041f\u0420\u041e\u0412\u0415\u0420\u0418\u0422\u042c':'\u041f\u041e\u0421\u0422\u0423\u041f\u041b\u0415\u041d\u0418\u0415_\u041f\u0420\u041e\u0412\u0415\u0420\u0418\u0422\u042c';
    const note='\u0412\u0440\u0435\u043c\u044f '+x.time+'; \u043a\u043e\u0434 '+x.externalId+'; \u0438\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u0437\u043d\u0430\u043a '+(x.signed<0?'-':'+');
    buffer.push([id,fileId,x.date,bank,account,type,Math.abs(x.signed),x.description,'REVIEW','',note]);inserted++;
   }
